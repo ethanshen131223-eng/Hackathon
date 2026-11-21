@@ -6,6 +6,7 @@ import {mountCleanupGame} from './games.js';
 import {EVIDENCE_CHOICES,EVIDENCE_LIMITS,checkReasoning} from './case-reasoning.js';
 import {matchOutline} from './outlines.js';
 import {mountOutlineTools} from './outline-tools.js';
+import {hostedDocument,chooseHostedCase} from './hosted-data.js';
 import './app.css';
 
 const main = document.getElementById('main-content');
@@ -113,6 +114,7 @@ function mountCase(item, {daily = false, custom = false} = {}) {
   else top.append(el('span', 'tag', custom ? 'Your authored puzzle' : item.label));
   if (!custom && !daily) top.append(button('Draw another photo', () => renderRoute(), 'secondary'));
   if (item.source?.poolSize) top.append(el('p', 'muted', `Drawn from ${item.source.drawPoolSize??item.source.poolSize} photos matching this difficulty, within a ${item.source.poolSize.toLocaleString()}-photo catalog. Regions are reference labels, not verified individual-item counts.`));
+  if(item.source?.hostedSnapshot)top.append(el('p','notice',`Hosted photo collection: ${item.source.poolSize} bundled FML photos, exported ${item.source.exportedAt?.slice(0,10)??'with this release'}. The full local dataset contains ${item.source.fullCatalogSize??3636} eligible photos. This is a sourced practice collection, not a live survey.`));
   main.append(top);
   const stepper = el('ol', 'stepper');
   for (const [i, label] of ['Identify', 'Explain your reasoning', 'Review & save'].entries()) {
@@ -300,6 +302,10 @@ async function drawDatasetCase(difficulty = 'beginner', daily = false) {
     if (!Array.isArray(item.targets) || !item.sceneUrl || !item.source) throw new Error('Invalid source response');
     recentCases.push(item.id);return item;
   } catch {
+    try {
+      const item=chooseHostedCase(await hostedDocument('cases'),{difficulty,exclude:recentCases.slice(-10),...(daily?{day:dateKey()}:{})});
+      recentCases.push(item.id);return item;
+    }catch{ /* The three original credited photos remain the final offline fallback. */ }
     const candidates=CASES.filter(item=>item.id!==recentCases.at(-1));
     const item=daily ? dailyCase(dateKey()) : (candidates.length?candidates:CASES)[Math.floor(Math.random()*(candidates.length||CASES.length))];
     recentCases.push(item.id);

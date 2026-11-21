@@ -14,7 +14,7 @@
 
 - No Google key for globe, no invented protected geometry, preserve ocean-map queries.
 - Keep live citation, unknown states, bounded records, and accessible result list.
-- Use local natural-color NASA imagery with provenance; keep existing typography.
+- Use local natural-color Natural Earth imagery with provenance; keep existing typography.
 
 ## Review focus
 
@@ -26,11 +26,13 @@
 
 ## Tasks
 
-- [ ] Add failing tests for geographic bounds, source query options, and globe layers; implement data/state layer and local texture.
-- [ ] Add failing DOM flow tests; implement globe renderer, region/results/details UI, navigation and responsive styles.
-- [ ] Run full frontend suite and production build; smoke-test the live service, review and fix findings, document visual-check limits.
+- [x] Add failing tests for geographic bounds, source query options, and globe layers; implement data/state layer and local texture.
+- [x] Add failing DOM flow tests; implement globe renderer, region/results/details UI, navigation and responsive styles.
+- [x] Run full frontend suite and production build; smoke-test the live service, review and fix findings, document visual-check limits.
 
 ## Ledger
 
 - Existing module version supports experimental GlobeView; cap zoom at 6 to keep this a regional overview. Use existing deck.gl dependencies.
 - Browser automation was explicitly stopped in the prior turn; do not resume native computer control during this task. Verify through meaningful DOM/layer tests and source smoke tests; report remaining visual QA.
+- User added mapped land/ocean imagery, consistent shading, named places, and publication. Extended the same basemap/labels to the keyless mapper and prepared 20 cached case photos plus 12 exported pollution snapshots for static hosting. Source-provided dates and limitations stay visible. Natural Earth replaces the unreachable NASA image host.
+- Review found a focused result button was replaced on selection; a failing focus regression test was added, then focus preservation implemented. All 99 frontend tests pass after the fix. Live protected-area query succeeded with a source release and explicit partial-result status.

@@ -23,7 +23,9 @@ test('conservation flow loads real results, filters, selects details and toggles
     assert.match(f.root.querySelector('#globe-attribution').textContent,/October 2026/);
     const filter=f.root.querySelector('#area-filter');filter.value='Island';filter.dispatchEvent(new f.window.Event('input'));
     assert.equal(f.root.querySelectorAll('.conservation-result').length,1);
-    f.root.querySelector('.conservation-result').click();
+    f.root.querySelector('.conservation-result').focus();f.root.querySelector('.conservation-result').click();
+    assert.equal(f.window.document.activeElement.textContent.includes('Island reserve'),true);
+    assert.equal(f.window.document.activeElement.className,'conservation-result');
     assert.match(f.root.querySelector('#area-details').textContent,/Island reserve/);
     assert.equal(f.root.querySelector('#area-details a').href,'https://www.protectedplanet.net/1');
     assert.ok(Math.abs(f.frames.at(-1).view.longitude)>178);

@@ -6,13 +6,15 @@ import {createMapLayers} from './spi-layers.js';
 import {normalizeBounds, sourceUrls, requestViewportData} from './viewport.js';
 import {searchTaxa} from './species.js';
 import {queryProtectedAreas} from './protected-areas.js';
+import {createBasemapLayers} from './basemap.js';
+import {hostedDocument,selectHostedPollution,tileAtPoint} from './hosted-data.js';
 import './style.css';
 
 const $ = id => document.getElementById(id);
 const state = {areas: [], area: null, tiles: {type: 'FeatureCollection', features: []},
   protected: {type: 'FeatureCollection', features: []}, gradient:{frames:[]}, species: [], view: null};
 let googleMap, overlay, preview, viewportTimer, tilesRequest, protectedRequest, searchRequest, gradientRequest, estimateRequest;
-let mapLabel = 'Coordinate preview';
+let mapLabel = 'Natural Earth map', placeLabels = [], hostedMode = false;
 
 function element(tag, text, className) {
   const node = document.createElement(tag);
@@ -36,10 +38,10 @@ function renderLegend() {
 }
 
 function layers() {
-  return createMapLayers({tiles: state.tiles, protectedAreas: state.protected,
+  return [...(!googleMap?createBasemapLayers({places:placeLabels,zoom:state.view?.zoom??2}):[]),...createMapLayers({tiles: state.tiles, protectedAreas: state.protected,
     spiVisible: $('heatmap-toggle').checked, protectedVisible: $('protected-toggle').checked,
     onTileClick: showTile, onProtectedClick: showProtected,gradient:state.gradient,
-    viewStyle:$('map-style').value,onGradientClick:showGradientEstimate});
+    viewStyle:$('map-style').value,onGradientClick:showGradientEstimate})];
 }
 
 function refreshLayers() {
@@ -94,16 +96,19 @@ async function requestTiles(bounds, zoom) {
   const params = new URLSearchParams(Object.fromEntries(['west', 'south', 'east', 'north'].map((k, i) => [k, bounds[i]])));
   params.set('zoom', zoom);
   try {
-    const response = await fetch(`/api/tiles?${params}`, {signal: controller.signal});
-    if (!response.ok) throw new Error('Tile API unavailable');
-    const data = await response.json();
+    let data;
+    if(hostedMode)data=selectHostedPollution(await hostedDocument('pollution-snapshots',controller.signal),bounds).tiles;
+    else {
+      const response = await fetch(`/api/tiles?${params}`, {signal: controller.signal});
+      if (!response.ok) throw new Error('Tile API unavailable');data=await response.json();
+    }
     if (controller.signal.aborted || tilesRequest !== controller) return;
     state.tiles = data;
     $('detection-count').textContent = state.tiles.features.length.toLocaleString();
     if($('map-style').value==='tiles') $('map-empty').hidden = state.tiles.features.length > 0;
     const meta = state.tiles.metadata ?? state.tiles;
     const resolution = meta.resolutionKm2 ?? (zoom >= 13 ? 1 : zoom >= 11 ? 4 : zoom >= 8 ? 25 : 100);
-    $('resolution').textContent = `${resolution} km² grid • only supported water is colored`;
+    $('resolution').textContent = hostedMode?`${resolution} km² exported snapshot grid; fixed resolution. Only supported water is colored.`:`${resolution} km² grid • only supported water is colored`;
     $('map-status').textContent = $('map-style').value==='gradient' ? `${mapLabel} · smoothed visual estimate` : `${mapLabel} · ${resolution} km² grid${meta.truncated || meta.limited ? ' · zoom in for more detail' : ''}`;
     refreshLayers();
   } catch (error) {
@@ -119,12 +124,16 @@ async function requestGradient(bounds,zoom) {
   const params=new URLSearchParams(Object.fromEntries(['west','south','east','north'].map((key,i)=>[key,bounds[i]])));params.set('zoom',zoom);
   $('gradient-status').textContent='Blending source observations and masking land…';
   try {
-    const response=await fetch(`/api/gradient?${params}`,{signal:controller.signal});
-    if(!response.ok)throw new Error('Gradient unavailable');
-    const gradient=await response.json();if(controller.signal.aborted||gradientRequest!==controller)return;
+    let gradient;
+    if(hostedMode)gradient=selectHostedPollution(await hostedDocument('pollution-snapshots',controller.signal),bounds).gradient;
+    else{
+      const response=await fetch(`/api/gradient?${params}`,{signal:controller.signal});
+      if(!response.ok)throw new Error('Gradient unavailable');gradient=await response.json();
+    }
+    if(controller.signal.aborted||gradientRequest!==controller)return;
     state.gradient=gradient;refreshLayers();
     if($('map-style').value==='gradient')$('map-empty').hidden=gradient.frames.some(frame=>frame.supportedPixels>0);
-    $('gradient-status').textContent='Smooth estimate between observations, limited to 75 km from a source sample. Transparent areas lack support. This is not measured coverage; use survey tiles to check the original support.';
+    $('gradient-status').textContent=`${hostedMode?'Exported historical snapshot. ':''}Smooth estimate between observations, limited to 75 km from a source sample. Transparent areas lack support. This is not measured coverage; use survey tiles to check the original support.`;
   } catch(error) {
     if(error.name==='AbortError'||gradientRequest!==controller)return;
     $('gradient-status').textContent='Smooth layer unavailable. Check the local map service, or switch to source-supported survey tiles.';
@@ -132,6 +141,14 @@ async function requestGradient(bounds,zoom) {
 }
 
 async function showGradientEstimate(coordinates) {
+  if(hostedMode){
+    const tile=tileAtPoint(state.tiles,coordinates);
+    if(tile){showTile(tile);$('tile-info').prepend(element('p','Source-supported snapshot tile at this point. The gradient is a separate smoothed visualization.','notice'));}
+    else {
+      const box=$('tile-info');box.replaceChildren(element('h2','Smoothed snapshot overview'),element('p','There is no source-supported survey tile at this point. The gradient illustrates interpolation; it cannot provide a precise measured value here. Switch to survey tiles to inspect actual source support.'));
+      const close=element('button','Close details','text-button');close.onclick=()=>box.hidden=true;box.append(close);box.hidden=false;
+    }return;
+  }
   estimateRequest?.abort();const controller=new AbortController();estimateRequest=controller;
   try {
     const response=await fetch(`/api/estimate?${new URLSearchParams({longitude:coordinates[0],latitude:coordinates[1]})}`,{signal:controller.signal});
@@ -220,7 +237,7 @@ function selectArea(area) {
   showSpecies();
 }
 
-function createPreview(message = 'Coordinate preview') {
+function createPreview(message = 'Natural Earth map') {
   overlay?.finalize(); overlay = null; googleMap = null; mapLabel = message;
   if (preview) return;
   $('map').replaceChildren(); $('key-notice').hidden = false; $('map-status').textContent = mapLabel;
@@ -248,10 +265,12 @@ async function loadGoogleMaps(key) {
 }
 
 async function loadAreas() {
-  const response = await fetch('/api/areas');
-  if (!response.ok) throw new Error('Areas API unavailable');
-  const data = await response.json(); state.areas = data.areas;
+  let data;
+  try {const response=await fetch('/api/areas');if(!response.ok)throw Error('Areas API unavailable');data=await response.json();hostedMode=false;}
+  catch {data=await hostedDocument('pollution-areas');hostedMode=true;}
+  state.areas = data.areas;
   $('data-source').textContent = typeof data.source === 'string' ? data.source : (data.source?.name ?? 'Scientific observations. See individual tile sources.');
+  if(hostedMode)$('data-source').textContent+=` Exported snapshot ${data.exportedAt?.slice(0,10)}; not a live feed. Hosted survey tiles retain a fixed 25 km² grid. Observation dates and source links remain available.`;
   $('area-select').replaceChildren();
   for (const area of state.areas) $('area-select').append(new Option(area.name, area.id));
   $('area-select').disabled = !state.areas.length; $('random-area').disabled = !state.areas.length;
@@ -264,6 +283,7 @@ async function loadAreas() {
 
 async function start() {
   renderLegend();
+  try {const response=await fetch('/globe/places.json');if(response.ok)placeLabels=(await response.json()).places??[];}catch{ /* Background still works without name labels. */ }
   try { const r = await fetch('/species.json'); if (r.ok) state.species = (await r.json()).species; } catch { /* Search remains available. */ }
   try { state.area = await loadAreas(); } catch {
     $('area-name').textContent = 'Start the observation service';
@@ -278,7 +298,7 @@ async function start() {
         mapTypeId: 'hybrid', streetViewControl: false, mapTypeControl: true, fullscreenControl: true});
       overlay = new GoogleMapsOverlay({interleaved: false, layers: layers()}); overlay.setMap(googleMap);
       mapLabel = 'Google Maps'; googleMap.addListener('idle', () => scheduleViewport());
-    } catch { createPreview('Google Maps unavailable · coordinate preview'); }
+    } catch { createPreview('Natural Earth map · Google imagery unavailable'); }
   } else createPreview();
   if (state.area) selectArea(state.area); else { showSpecies(); scheduleViewport(state.view); }
 }

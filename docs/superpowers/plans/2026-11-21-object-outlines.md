@@ -26,11 +26,12 @@
 
 ## Tasks
 
-- [ ] Write failing geometry/storage tests; implement bounded polygons, matching, and backwards-compatible persistence.
-- [ ] Write failing pointer-controller DOM tests; implement draw/point, live preview, cancel, undo, clear, and cleanup.
-- [ ] Add case and editor flow coverage, wire shared controls into case/workbench/creator, and add matching styles.
-- [ ] Run complete frontend tests and production build, inspect integration and edge cases, and document verification limits.
+- [x] Write failing geometry/storage tests; implement bounded polygons, matching, and backwards-compatible persistence.
+- [x] Write failing pointer-controller DOM tests; implement draw/point, live preview, cancel, undo, clear, and cleanup.
+- [x] Add case and editor flow coverage, wire shared controls into case/workbench/creator, and add matching styles.
+- [x] Run complete frontend tests and production build, inspect integration and edge cases, and document verification limits.
 
 ## Execution ledger
 
 - Existing click markers and forms remain the accessible fallback. The user's direct request supplies scope; routine implementation choices are made inline.
+- Final review found creator testing used answer-key geometry instead of drawn strokes. A subsequent verified fix keeps strokes and point discoveries separate, renders unmatched strokes, and preserves point discoveries on undo/clear. Browser visual checks were stopped by the user; DOM and geometry checks pass.

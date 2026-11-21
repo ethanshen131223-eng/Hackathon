@@ -12,5 +12,6 @@
   ],
   "sourceSha256": "9e85417223414bbed425aea5dca0f0b4c5661fc94d4f14494140a21a08dfa450",
   "conversion": "TIFF resized proportionally to 2048 pixels wide and converted to JPEG quality 90.",
-  "limitations": "Generalized historical cartographic land cover and relief basemap; not current imagery, exact coastlines, or conservation-condition data."
+  "limitations": "Generalized historical cartographic land cover and relief basemap; not current imagery, exact coastlines, or conservation-condition data.",
+  "mapVariant": "earth-map.jpg: cropped to +/-85.0511 degrees latitude using resampled image bounds for the Mercator overview; globe retains full +/-90 degree texture."
 }

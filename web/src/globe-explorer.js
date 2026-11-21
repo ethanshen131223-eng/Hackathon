@@ -70,15 +70,18 @@ export function mountGlobeExplorer(container,{query=queryProtectedAreas,createRe
   function updateRenderer(){coordinates.textContent=`Centered at ${coordinateLabel(view)}`;renderer?.update({view,features,selectedId,protectedVisible});}
   function clearDetails(){details.replaceChildren(el('h2','','Choose a protected area'),el('p','','Select a shaded boundary or an area in the list to read its source details.'));}
   function renderList(){
+    const focusedId=results.contains(document.activeElement)?document.activeElement.dataset.areaId:null;
     results.replaceChildren();const matches=filterGlobeFeatures(features,filter.value);
     listHeading.textContent=features.length?`Areas to explore (${matches.length} of ${features.length})`:'Areas to explore';
     if(!matches.length)results.append(el('p','globe-list-empty',features.length?'No loaded names match. Try another name or clear the filter.':'No boundaries loaded. Choose a region or refresh the connection.'));
     for(const feature of matches){
       const choice=button('',()=>selectFeature(feature),'conservation-result');
+      choice.dataset.areaId=String(feature.id);
       choice.setAttribute('aria-pressed',String(feature.id===selectedId));
       choice.append(el('strong','',feature.properties.name),el('small','',feature.properties.designation??'Designation not supplied'));
       results.append(choice);
     }
+    if(focusedId)[...results.children].find(node=>node.dataset.areaId===focusedId)?.focus({preventScroll:true});
   }
   function selectFeature(feature){
     selectedId=feature.id;const focus=featureFocus(feature);if(focus)view=focus;
