@@ -1,0 +1,13 @@
+{
+  "name": "Natural Earth 1:10m land",
+  "repositoryTag": "v5.1.2",
+  "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_land.geojson",
+  "documentationUrl": "https://www.naturalearthdata.com/downloads/10m-physical-vectors/10m-land/",
+  "license": "Public domain",
+  "licenseUrl": "https://www.naturalearthdata.com/about/terms-of-use/",
+  "retrievedAt": "2026-11-21T21:15:17.448940+00:00",
+  "sha256": "1ac90796408bc6ad6911d69448485d3c4dbf2190370080368a09976e1c9f7416",
+  "bytes": 10157965,
+  "featureCount": 11,
+  "limitations": "Cartographic 1:10,000,000 coastline, not 10-metre spatial resolution. Small islands, tidal change and fine shorelines may be omitted; especially uncertain for 1 km\u00b2 coastal cells. Natural Earth flags northern Russia and southern Chile coastline accuracy."
+}

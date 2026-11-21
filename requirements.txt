@@ -1,0 +1,10 @@
+# Install the CUDA build of torch/torchvision first (see README.md).
+ultralytics==8.4.216
+rasterio==1.5.2
+numpy==2.5.4
+opencv-python==5.1.0.95
+Pillow==13.0.0
+PyYAML==6.0.4
+pytest==9.2.0
+shapely==2.2.0
+pyproj==3.8.0

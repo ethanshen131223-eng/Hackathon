@@ -1,0 +1,125 @@
+{
+  "started_utc": "2026-11-21T21:07:29.444753+00:00",
+  "python": "3.12.10",
+  "torch": "2.11.0+cu128",
+  "ultralytics": "8.4.216",
+  "cuda": "12.8",
+  "gpu": "NVIDIA GeForce RTX 4080 Laptop GPU",
+  "archive_sha256": "e19227596018348169b11a78d033890adb97d4b4f4c069f061cfcfab21d48d08",
+  "preprocessing": {
+    "rgb_bands_one_based": [
+      4,
+      3,
+      2
+    ],
+    "reflectance_range": [
+      0,
+      0.1
+    ],
+    "rendering": "clip, multiply by 255, round to nearest uint8",
+    "source_class_id": 1,
+    "yolo_class_id": 0,
+    "connectivity": 8,
+    "minimum_component_pixels": 1,
+    "rgb_nodata": "All three channels zeroed at nonfinite visible pixels; annotated overlaps rejected"
+  },
+  "split_statistics": {
+    "train": {
+      "images": 694,
+      "positive_images": 190,
+      "background_images": 504,
+      "boxes": 689,
+      "debris_pixels": 1943,
+      "labeled_pixels": 429412,
+      "component_area_histogram": {
+        "1": 259,
+        "2": 197,
+        "3": 90,
+        "4": 65,
+        "5": 21,
+        "6": 15,
+        "7": 12,
+        "8": 8,
+        "9": 1,
+        "10": 3,
+        "11": 3,
+        "12": 3,
+        "13": 2,
+        "14": 2,
+        "18": 2,
+        "21": 1,
+        "28": 1,
+        "29": 1,
+        "38": 1,
+        "40": 1,
+        "63": 1
+      }
+    },
+    "val": {
+      "images": 328,
+      "positive_images": 82,
+      "background_images": 246,
+      "boxes": 418,
+      "debris_pixels": 1075,
+      "labeled_pixels": 213102,
+      "component_area_histogram": {
+        "1": 149,
+        "2": 137,
+        "3": 61,
+        "4": 37,
+        "5": 10,
+        "6": 5,
+        "7": 4,
+        "8": 3,
+        "9": 2,
+        "10": 1,
+        "11": 1,
+        "12": 2,
+        "17": 2,
+        "20": 2,
+        "21": 1,
+        "31": 1
+      }
+    },
+    "test": {
+      "images": 359,
+      "positive_images": 101,
+      "background_images": 258,
+      "boxes": 223,
+      "debris_pixels": 381,
+      "labeled_pixels": 194863,
+      "component_area_histogram": {
+        "1": 113,
+        "2": 86,
+        "3": 12,
+        "4": 5,
+        "5": 4,
+        "6": 2,
+        "8": 1
+      }
+    }
+  },
+  "requested_arguments": {
+    "data": "C:\\Eurkea Hacks Hackathon\\data\\marida_yolo\\data.yaml",
+    "epochs": 100,
+    "batch": 16,
+    "imgsz": 512,
+    "patience": 20,
+    "device": "0",
+    "name": "satellite_yolo11n",
+    "resume": null
+  },
+  "warning": "Weak-mask-derived boxes; scores do not establish individual litter detection or concentration/physical-size estimation. RGB channels only.",
+  "test_metrics": {
+    "metrics/precision(B)": 0.07788683101340897,
+    "metrics/recall(B)": 0.053811659192825115,
+    "metrics/mAP50(B)": 0.01206817424474176,
+    "metrics/mAP50-95(B)": 0.002758709814273021,
+    "fitness": 0.002758709814273021
+  },
+  "test_metrics_note": "Ultralytics precision/recall use its curve-selected operating point; example predictions independently use confidence 0.25.",
+  "epochs_completed": 100,
+  "elapsed_seconds": 1773.75,
+  "best_checkpoint_sha256": "3770c43e3972324c285f53101d87c4df2f8b96615f5f9f31dcdb6a0e9001765d",
+  "run_dir": "C:\\Eurkea Hacks Hackathon\\runs\\satellite_yolo11n"
+}

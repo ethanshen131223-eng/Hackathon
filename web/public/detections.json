@@ -1,0 +1,40 @@
+{
+  "status": "model_detections",
+  "generatedUtc": "2026-11-21T21:38:35.065979+00:00",
+  "source": "YOLO11n detections on historical MARIDA held-out test images",
+  "archiveSha256": "e19227596018348169b11a78d033890adb97d4b4f4c069f061cfcfab21d48d08",
+  "weightsSha256": "3770c43e3972324c285f53101d87c4df2f8b96615f5f9f31dcdb6a0e9001765d",
+  "minimumConfidence": 0.25,
+  "interpretation": "Confidence-weighted detection density, not plastic concentration or a live risk score. Google supplies only the basemap.",
+  "areas": [
+    {
+      "id": "50LLR",
+      "name": "Bali coast",
+      "center": [
+        115.65905711765711,
+        -8.960860595062424
+      ],
+      "bounds": [
+        115.65905711765711,
+        -8.960860595062424,
+        115.65905711765711,
+        -8.960860595062424
+      ],
+      "dates": [
+        "2018-03-04"
+      ]
+    }
+  ],
+  "detections": [
+    {
+      "areaId": "50LLR",
+      "position": [
+        115.65905711765711,
+        -8.960860595062424
+      ],
+      "confidence": 0.2589678466320038,
+      "patchId": "S2_4-3-18_50LLR_12",
+      "captured": "2018-03-04"
+    }
+  ]
+}

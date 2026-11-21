@@ -1,0 +1,16 @@
+{
+  "name": "Natural Earth I with shaded relief and water",
+  "sourceUrl": "https://naciscdn.org/naturalearth/50m/raster/NE1_50M_SR_W.zip",
+  "documentationUrl": "https://www.naturalearthdata.com/downloads/50m-raster-data/50m-natural-earth-1/",
+  "credit": "Made with Natural Earth. Tom Patterson and Nathaniel Vaughn Kelso and contributors.",
+  "license": "Public domain",
+  "licenseUrl": "https://www.naturalearthdata.com/about/terms-of-use/",
+  "retrievedAt": "2026-11-21",
+  "dimensions": [
+    2048,
+    1024
+  ],
+  "sourceSha256": "9e85417223414bbed425aea5dca0f0b4c5661fc94d4f14494140a21a08dfa450",
+  "conversion": "TIFF resized proportionally to 2048 pixels wide and converted to JPEG quality 90.",
+  "limitations": "Generalized historical cartographic land cover and relief basemap; not current imagery, exact coastlines, or conservation-condition data."
+}

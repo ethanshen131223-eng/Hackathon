@@ -1,0 +1,163 @@
+{
+  "species": [
+    {
+      "id": "green-turtle",
+      "name": "Green turtle",
+      "scientificName": "Chelonia mydas",
+      "sourceUrl": "https://www.fisheries.noaa.gov/species/green-turtle",
+      "rangeSummary": "NOAA describes a broad distribution across the Atlantic, Pacific and Indian oceans and the Mediterranean Sea.",
+      "habitat": "Young turtles develop offshore; older juveniles and adults forage in shallow coastal waters, including seagrass and algae habitats.",
+      "studyTiles": [
+        "16PCC",
+        "16PDC",
+        "16PEC",
+        "16QED",
+        "18QWF",
+        "18QYF",
+        "18QYG",
+        "19QDA",
+        "48MXU",
+        "48MYU",
+        "48PZC",
+        "50LLR",
+        "51PTS",
+        "36JUN"
+      ],
+      "aphiaId": 137206,
+      "authority": "(Linnaeus, 1758)",
+      "wormsUrl": "https://www.marinespecies.org/aphia.php?p=taxdetails&id=137206",
+      "citation": "Uetz, P. (ed.) (2026). The Reptile Database. Chelonia mydas (Linnaeus, 1758). Accessed through: World Register of Marine Species at: https://www.marinespecies.org/aphia.php?p=taxdetails&id=137206 on 2026-11-21",
+      "reviewed": "2026-11-21",
+      "classification": {
+        "kingdom": "Animalia",
+        "phylum": "Chordata",
+        "class": null,
+        "order": "Testudines",
+        "family": "Cheloniidae",
+        "genus": "Chelonia"
+      },
+      "associationBasis": "Broad NOAA range context; not a sighting or confirmed local occurrence."
+    },
+    {
+      "id": "hawksbill-turtle",
+      "name": "Hawksbill turtle",
+      "scientificName": "Eretmochelys imbricata",
+      "sourceUrl": "https://www.fisheries.noaa.gov/species/hawksbill-turtle",
+      "rangeSummary": "NOAA describes nearshore habitats across the world's major oceans.",
+      "habitat": "Older turtles commonly forage on coral reefs; some use mangrove estuaries. Hatchlings spend their early years offshore around floating algae and drift material.",
+      "studyTiles": [
+        "16PCC",
+        "16PDC",
+        "16PEC",
+        "16QED",
+        "18QWF",
+        "18QYF",
+        "18QYG",
+        "19QDA",
+        "48MXU",
+        "48MYU",
+        "48PZC",
+        "50LLR",
+        "51PTS"
+      ],
+      "aphiaId": 137207,
+      "authority": "(Linnaeus, 1766)",
+      "wormsUrl": "https://www.marinespecies.org/aphia.php?p=taxdetails&id=137207",
+      "citation": "Uetz, P. (ed.) (2026). The Reptile Database. Eretmochelys imbricata (Linnaeus, 1766). Accessed through: World Register of Marine Species at: https://www.marinespecies.org/aphia.php?p=taxdetails&id=137207 on 2026-11-21",
+      "reviewed": "2026-11-21",
+      "classification": {
+        "kingdom": "Animalia",
+        "phylum": "Chordata",
+        "class": null,
+        "order": "Testudines",
+        "family": "Cheloniidae",
+        "genus": "Eretmochelys"
+      },
+      "associationBasis": "Broad NOAA range context; not a sighting or confirmed local occurrence."
+    },
+    {
+      "id": "leatherback-turtle",
+      "name": "Leatherback turtle",
+      "scientificName": "Dermochelys coriacea",
+      "sourceUrl": "https://www.fisheries.noaa.gov/species/leatherback-turtle",
+      "rangeSummary": "NOAA describes leatherbacks across the Atlantic, Pacific and Indian oceans, migrating between distant feeding and nesting regions.",
+      "habitat": "These ocean-going turtles feed on soft-bodied prey such as jellyfish and salps; females come ashore on warm-water nesting beaches.",
+      "studyTiles": [
+        "16PCC",
+        "16PDC",
+        "16PEC",
+        "16QED",
+        "18QWF",
+        "18QYF",
+        "18QYG",
+        "19QDA",
+        "48MXU",
+        "48MYU",
+        "48PZC",
+        "50LLR",
+        "51PTS",
+        "36JUN"
+      ],
+      "aphiaId": 137209,
+      "authority": "(Vandelli, 1761)",
+      "wormsUrl": "https://www.marinespecies.org/aphia.php?p=taxdetails&id=137209",
+      "citation": "Uetz, P. (ed.) (2026). The Reptile Database. Dermochelys coriacea (Vandelli, 1761). Accessed through: World Register of Marine Species at: https://www.marinespecies.org/aphia.php?p=taxdetails&id=137209 on 2026-11-21",
+      "reviewed": "2026-11-21",
+      "classification": {
+        "kingdom": "Animalia",
+        "phylum": "Chordata",
+        "class": null,
+        "order": "Testudines",
+        "family": "Dermochelyidae",
+        "genus": "Dermochelys"
+      },
+      "associationBasis": "Broad NOAA range context; not a sighting or confirmed local occurrence."
+    },
+    {
+      "id": "yellowfin-tuna",
+      "name": "Yellowfin tuna",
+      "scientificName": "Thunnus albacares",
+      "sourceUrl": "https://www.fisheries.noaa.gov/species/atlantic-yellowfin-tuna",
+      "sourceUrls": [
+        "https://www.fisheries.noaa.gov/species/atlantic-yellowfin-tuna",
+        "https://www.fisheries.noaa.gov/species/pacific-yellowfin-tuna"
+      ],
+      "rangeSummary": "NOAA describes yellowfin in tropical and subtropical oceans worldwide, including the Caribbean and Pacific.",
+      "habitat": "Highly migratory fish of warm ocean waters. Larvae and juveniles occupy surface waters; older fish also use deeper water and may gather around floating objects.",
+      "studyTiles": [
+        "16PCC",
+        "16PDC",
+        "16PEC",
+        "16QED",
+        "18QWF",
+        "18QYF",
+        "18QYG",
+        "19QDA",
+        "48MXU",
+        "48MYU",
+        "48PZC",
+        "50LLR",
+        "51PTS",
+        "36JUN"
+      ],
+      "aphiaId": 127027,
+      "authority": "(Bonnaterre, 1788)",
+      "wormsUrl": "https://www.marinespecies.org/aphia.php?p=taxdetails&id=127027",
+      "citation": "Froese, R. and D. Pauly. Editors. (2026). FishBase. Thunnus albacares (Bonnaterre, 1788). Accessed through: World Register of Marine Species at: https://www.marinespecies.org/aphia.php?p=taxdetails&id=127027 on 2026-11-21",
+      "reviewed": "2026-11-21",
+      "classification": {
+        "kingdom": "Animalia",
+        "phylum": "Chordata",
+        "class": "Teleostei",
+        "order": "Scombriformes",
+        "family": "Scombridae",
+        "genus": "Thunnus"
+      },
+      "associationBasis": "Broad NOAA range context; not a sighting or confirmed local occurrence."
+    }
+  ],
+  "taxonomyRetrievedAt": "2026-11-21T21:17:00.219510+00:00",
+  "rangeSource": "NOAA Fisheries",
+  "taxonomySource": "World Register of Marine Species (WoRMS)",
+  "rangeNotice": "Broad range context only. Associations do not establish local presence or interaction with detected debris."
+}

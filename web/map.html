@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#123a4a" />
+    <meta name="description" content="Explore approximate marine debris detections on a map with MarineGUARDer." />
+    <title>MarineGUARDer | Ocean explorer</title>
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/" aria-label="MarineGUARDer home">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3 35 9v11c0 9-15 17-15 17S5 29 5 20V9Z"/><path class="wave" d="M8 20c6-7 12 7 18 0 2-2 4-2 7-1M9 26c6-7 12 7 18 0"/></svg>
+        <span>Marine<strong>GUARDer</strong></span>
+      </a>
+      <nav class="map-navigation" aria-label="Main navigation"><a href="/#home">Home</a><a href="/#cases">Field cases</a><a href="/#daily">Daily puzzle</a><a href="/#play">Practice</a><a href="/#collection">Collection</a><a href="/map.html" aria-current="page">Ocean map</a><a href="/globe.html">Conservation globe</a></nav>
+    </header>
+    <main>
+      <aside>
+        <div class="intro"><h1>Ocean pollution, in perspective.</h1><p>Explore observations. Understand what we know, and where we need to look.</p></div>
+        <section class="location-panel">
+          <span class="field-label">Selected study area</span>
+          <h2 id="area-name">Loading observations…</h2>
+          <p id="area-coordinates" class="coordinates">Historical surface observations</p>
+          <label for="area-select" class="sr-only">Choose study area</label>
+          <select id="area-select" disabled><option>Loading areas</option></select>
+          <button id="random-area" class="primary" disabled><span aria-hidden="true">↻</span> Random area</button>
+        </section>
+        <section class="layer-panel">
+          <label class="switch-row" for="heatmap-toggle"><span><strong>Sea Pollution Index</strong><small>Show water-clipped density estimates</small></span><input id="heatmap-toggle" type="checkbox" role="switch" checked /><span class="switch" aria-hidden="true"></span></label>
+          <label class="range-label" for="map-style">Pollution view</label><select id="map-style"><option value="gradient">Smooth gradient estimate</option><option value="tiles">Source-supported survey tiles</option></select>
+          <p class="layer-note" id="gradient-status" role="status">Gradient mode blends source values within 75 km. It is an unvalidated visual estimate, not measured coverage.</p>
+          <label class="switch-row secondary-switch" for="protected-toggle"><span><strong>Protected areas</strong><small>Protected Planet marine boundaries</small></span><input id="protected-toggle" type="checkbox" role="switch" /><span class="switch" aria-hidden="true"></span></label>
+          <p class="layer-note" id="resolution">Grid adapts to your zoom level.</p>
+          <p class="layer-note" id="protected-status" role="status"></p>
+        </section>
+        <section class="observation-panel"><p><strong id="detection-count">0</strong> supported ocean tiles in view</p><p id="observation-dates">Click a colored tile to inspect its source.</p><button class="text-button" id="refresh-data">Refresh observations</button></section>
+        <section class="species-panel"><h2>Marine life to research</h2><p class="species-note">Broad NOAA range overlap is context, not a sighting or a local impact assessment.</p><div id="species-list"></div><p class="source-links"><a href="https://www.fisheries.noaa.gov/find-species" target="_blank" rel="noopener noreferrer">NOAA species directory</a><br/><a href="https://www.fisheries.noaa.gov/highly-migratory-species" target="_blank" rel="noopener noreferrer">Highly migratory species</a></p></section>
+        <section class="taxonomy-panel"><h2>Find a species</h2><form id="species-search"><label for="species-query">Common or scientific name</label><div class="search-row"><input id="species-query" type="search" placeholder="e.g. green turtle" minlength="3" required /><button type="submit">Search</button></div></form><p id="search-status" role="status">Accepted scientific names from WoRMS.</p><div id="taxon-results"></div></section>
+        <details open><summary>What this map tells you</summary><p id="data-source">Loading scientific observations…</p><p>SPI uses the displayed size range of floating plastic particles. It does not count all marine litter. Sample-based tile estimates are distinct from measured source observations.</p><p>Unobserved water is transparent, not pollution-free. Dates, modeled support, and uncertainties are available for each tile.</p><p>Coastlines use Natural Earth 1:10 million cartography. Small islands and narrow coastal features may be approximate; this is not a navigation map.</p><p>Google Maps provides natural-color basemap imagery. Pollution data, NOAA species ranges, and Protected Planet boundaries are separate sources.</p><p>Satellite detections cannot directly establish pieces/km². The trained YOLO model is kept separate from this index.</p></details>
+      </aside>
+      <section class="map-shell" aria-label="Marine debris observation map">
+        <div id="map"></div>
+        <div class="map-status" id="map-status" role="status">Preparing map…</div>
+        <div class="key-notice" id="key-notice" hidden><strong>Natural Earth overview</strong><p>Land, ocean and place labels are available without a key. This historical cartographic background becomes less detailed as you zoom in.</p><details><summary>Connect detailed Google imagery</summary><p>Copy <code>web/.env.example</code> to <code>web/.env.local</code>, set <code>VITE_GOOGLE_MAPS_API_KEY</code>, and restart the local server.</p></details><p><a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener noreferrer">Basemap: Natural Earth</a></p></div>
+        <div class="map-empty" id="map-empty" hidden>No compatible density observations in this view. Transparent water means insufficient data.</div>
+        <div class="tile-info" id="tile-info" hidden aria-live="polite"></div>
+        <div class="legend" id="legend"><strong>Sea Pollution Index</strong><span class="legend-unit">Floating pieces / km²</span><div class="legend-gradient"></div><div id="spi-bands"></div><div class="unknown-key"><i></i><span>Transparent: insufficient support</span></div><small>Colors blend between thresholds.<br/>Click for exact class and source dates.</small></div>
+      </section>
+    </main>
+    <script type="module" src="/src/explorer.js"></script>
+  </body>
+</html>

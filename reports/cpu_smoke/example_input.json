@@ -1,0 +1,7 @@
+{
+  "source": "C:\\Eurkea Hacks Hackathon\\reports\\example_input.tif",
+  "model": "C:\\Eurkea Hacks Hackathon\\models\\marineguarder_satellite_yolo11n.pt",
+  "confidence_threshold": 0.25,
+  "interpretation": "Approximate debris regions; not individual item counts or concentration.",
+  "detections": []
+}

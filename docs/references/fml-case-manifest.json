@@ -1,0 +1,155 @@
+[
+  {
+    "image": {
+      "id": 19,
+      "file_name": "image_20241006_082939_515090.jpg",
+      "width": 1920,
+      "height": 1080
+    },
+    "annotations": [
+      {
+        "id": 78,
+        "image_id": 19,
+        "category_id": 1,
+        "bbox": [
+          843.75,
+          248.90624999999997,
+          268.5,
+          97.875
+        ],
+        "area": 26279.4375,
+        "iscrowd": 0
+      },
+      {
+        "id": 79,
+        "image_id": 19,
+        "category_id": 1,
+        "bbox": [
+          288.00000000000006,
+          247.640625,
+          237.0,
+          97.03125
+        ],
+        "area": 22996.40625,
+        "iscrowd": 0
+      },
+      {
+        "id": 80,
+        "image_id": 19,
+        "category_id": 1,
+        "bbox": [
+          1367.2499999999998,
+          218.109375,
+          379.5,
+          115.59375
+        ],
+        "area": 43867.828125,
+        "iscrowd": 0
+      }
+    ],
+    "archiveMember": "fml/images/test/image_20241006_082939_515090.jpg",
+    "sceneUrl": "/scenes/fml-19.jpg"
+  },
+  {
+    "image": {
+      "id": 64,
+      "file_name": "frame_0879.png",
+      "width": 1920,
+      "height": 1080
+    },
+    "annotations": [
+      {
+        "id": 185,
+        "image_id": 64,
+        "category_id": 1,
+        "bbox": [
+          10.00032000000001,
+          496.00025999999997,
+          786.0,
+          554.0000399999999
+        ],
+        "area": 435444.03143999993,
+        "iscrowd": 0
+      },
+      {
+        "id": 186,
+        "image_id": 64,
+        "category_id": 1,
+        "bbox": [
+          678.0,
+          346.99968,
+          223.00032,
+          109.00008
+        ],
+        "area": 24307.052720025596,
+        "iscrowd": 0
+      },
+      {
+        "id": 187,
+        "image_id": 64,
+        "category_id": 1,
+        "bbox": [
+          438.00000000000006,
+          374.99976000000004,
+          252.0,
+          129.99960000000002
+        ],
+        "area": 32759.899200000003,
+        "iscrowd": 0
+      },
+      {
+        "id": 188,
+        "image_id": 64,
+        "category_id": 1,
+        "bbox": [
+          338.99904,
+          377.00046000000003,
+          127.00031999999999,
+          90.99972
+        ],
+        "area": 11556.9935599104,
+        "iscrowd": 0
+      }
+    ],
+    "archiveMember": "fml/images/test/frame_0879.jpg",
+    "sceneUrl": "/scenes/fml-64.jpg"
+  },
+  {
+    "image": {
+      "id": 274,
+      "file_name": "image_20241007_093909_596933.jpg",
+      "width": 1920,
+      "height": 1080
+    },
+    "annotations": [
+      {
+        "id": 844,
+        "image_id": 274,
+        "category_id": 1,
+        "bbox": [
+          2.2500000000000053,
+          231.1875,
+          202.5,
+          64.125
+        ],
+        "area": 12985.3125,
+        "iscrowd": 0
+      },
+      {
+        "id": 845,
+        "image_id": 274,
+        "category_id": 1,
+        "bbox": [
+          358.5,
+          143.015625,
+          258.0,
+          88.59375
+        ],
+        "area": 22857.1875,
+        "iscrowd": 0
+      }
+    ],
+    "archiveMember": "fml/images/test/image_20241007_093909_596933.jpg",
+    "sceneUrl": "/scenes/fml-274.jpg"
+  }
+]

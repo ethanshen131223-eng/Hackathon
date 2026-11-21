@@ -1,0 +1,15 @@
+.venv/
+.venv-map/
+__pycache__/
+.pytest_cache/
+*.zip
+data/
+runs/
+models/
+yolo*.pt
+*.log
+.config/
+node_modules/
+dist/
+.env.local
+.env.*.local
