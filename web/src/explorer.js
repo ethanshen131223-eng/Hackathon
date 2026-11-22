@@ -16,6 +16,7 @@ import './globe.css';
 import './bottom-bar.css';
 import {mountCleanupPlanner} from './cleanup-planner.js';
 import {mountCurrentTimeline} from './current-timeline.js';
+import {mountWasteObservations} from './waste-observations.js';
 
 const $ = id => document.getElementById(id);
 const state = {areas: [], area: null, tiles: {type: 'FeatureCollection', features: []},
@@ -90,7 +91,8 @@ function layers() {
   return [...(!googleMap?createBasemapLayers({places:placeLabels,zoom:state.view?.zoom??2}):[]),...createMapLayers({tiles: state.tiles, protectedAreas: state.protected,
     spiVisible: $('heatmap-toggle').checked, protectedVisible: $('protected-toggle').checked,
     onTileClick: showTile, onProtectedClick: showProtected,gradient,
-    viewStyle:$('map-style').value,onGradientClick:showGradientEstimate})];
+    viewStyle:$('map-style').value,onGradientClick:showGradientEstimate}),
+    ...wasteObservations.layer(googleMap?.getZoom() ?? state.view?.zoom ?? 2)];
 }
 
 function refreshLayers() {
@@ -100,6 +102,15 @@ function refreshLayers() {
 
 const cleanupPlanner = mountCleanupPlanner($('cleanup-planner'));
 const currentTimeline = mountCurrentTimeline($('current-timeline'), loadGlobalPlastic);
+const wasteObservations = mountWasteObservations(document, {
+  redraw: refreshLayers,
+  focusWorld() {
+    state.view = {longitude: 0, latitude: 0, zoom: 1};
+    if (googleMap) { googleMap.setCenter({lng: 0, lat: 0}); googleMap.setZoom(1); }
+    preview?.setProps({initialViewState: state.view});
+    scheduleViewport(state.view);
+  },
+});
 
 function prefillCleanupCandidate(panel, coordinates, name, evidence) {
   if (!coordinates?.slice(0, 2).every(Number.isFinite) || coordinates.length < 2) return;
@@ -331,6 +342,7 @@ async function requestProtected(bounds = viewBounds(state.view)) {
 
 function scheduleViewport(view) {
   state.view = view ?? state.view;
+  if (oceanVisible && wasteObservations.needsRedraw(googleMap?.getZoom() ?? state.view?.zoom ?? 2)) refreshLayers();
   tilesRequest?.abort(); protectedRequest?.abort(); gradientRequest?.abort();
   clearTimeout(viewportTimer);
   if(!oceanVisible)return;
@@ -557,5 +569,7 @@ start().then(()=>{
     $('map-style').value = 'years';
     $('map-style').onchange();
   }
+  const evidence = new URLSearchParams(location.search).get('evidence');
+  if (oceanVisible && ['noaa', 'river'].includes(evidence)) wasteObservations.selectKind(evidence);
 }).catch(() => { $('map-status').textContent = 'Explorer could not start. Refresh to try again.'; });
 window.addEventListener('pagehide',()=>{currentTimeline.destroy();explorerShell?.destroy();preview?.finalize();overlay?.finalize();clearTimeout(viewportTimer);tilesRequest?.abort();gradientRequest?.abort();protectedRequest?.abort();},{once:true});

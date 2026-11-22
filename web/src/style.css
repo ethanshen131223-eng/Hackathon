@@ -87,6 +87,10 @@ select { width: 100%; border: 1px solid #c9dadd; border-radius: 6px; padding: 12
 .primary:hover:enabled { background: #0b6865; }
 .primary > span { margin-right: 8px; font-size: 21px; line-height: 16px; }
 .switch-row { display: flex; align-items: center; gap: 8px; cursor: pointer; position: relative; }
+#waste-evidence { margin-bottom:12px; }
+#waste-status { margin:0 0 12px; }
+#waste-medium { margin-bottom:12px; }
+.waste-record-controls { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
 .switch-row > span:first-child { flex: 1; }
 .switch-row small { display: block; font-size: 13px; line-height: 1.5; color: #657e85; margin-top: 5px; }
 .switch-row input { position: absolute; right: 0; opacity: 0; width: 44px; height: 30px; margin: 0; }

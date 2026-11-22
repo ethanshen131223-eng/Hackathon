@@ -27,6 +27,15 @@
           <button id="random-area" class="primary" disabled><span aria-hidden="true">↻</span> Random area</button>
         </section>
         <section class="layer-panel">
+          <label class="range-label" for="waste-evidence">Waste data sources</label>
+          <select id="waste-evidence">
+            <option value="">Map estimates only</option>
+            <option value="noaa">NOAA microplastic samples</option>
+            <option value="river">Modeled river plastic outfalls</option>
+          </select>
+          <label id="waste-medium-label" for="waste-medium" class="range-label" hidden>Sample setting</label>
+          <select id="waste-medium" hidden><option value="">All settings</option></select>
+          <p id="waste-status" class="layer-note" role="status" hidden></p>
           <label class="switch-row" for="heatmap-toggle"><span><strong>Ocean concentration layer</strong><small>Show water-clipped density estimates</small></span><input id="heatmap-toggle" type="checkbox" role="switch" checked /><span class="switch" aria-hidden="true"></span></label>
           <label class="range-label" for="map-style">Pollution view</label><select id="map-style"><option value="gradient">Survey concentration gradient</option><option value="years">Five-year currents scenario</option><option value="global">Global microplastics model (2014)</option><option value="tiles">SPI classification tiles</option></select>
           <p class="layer-note" id="gradient-status" role="status">Gradient mode blends source values within 75 km. It is an unvalidated visual estimate, not measured coverage.</p>
