@@ -1,6 +1,6 @@
 import {normalizeGlobeView} from './globe-state.js';
 
-export function mountExplorerSwitch({document,getOceanView,setOceanView,onOceanVisibility=()=>{},mountGlobe}={}) {
+export function mountExplorerSwitch({document,getOceanView,setOceanView,onOceanVisibility=()=>{},onProtectedSite,mountGlobe}={}) {
   const window=document.defaultView,events=new window.AbortController(),bar=document.getElementById('explorer-switch');
   const ocean=document.getElementById('pollution-view'),globe=document.getElementById('conservation-view');
   let alive=true,generation=0,runtime=null,lastGlobeView=null,mode='ocean',initialized=false,initialOceanView=null;
@@ -45,7 +45,7 @@ export function mountExplorerSwitch({document,getOceanView,setOceanView,onOceanV
     try{
       const create=mountGlobe??(await import('./globe-explorer.js')).mountGlobeExplorer;
       if(!alive||ticket!==generation)return;
-      const mounted=await create(globe,{initialView:focus});
+      const mounted=await create(globe,{initialView:focus,onProtectedSite});
       if(!alive||ticket!==generation){mounted.destroy();return;}
       runtime=mounted;
     }catch{if(alive&&ticket===generation){message.textContent='The globe could not load. Switch to Ocean map or try the globe again.';globe.replaceChildren(message);}}

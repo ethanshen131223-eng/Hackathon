@@ -33,14 +33,23 @@ test('a survey tile becomes candidate context and the candidate survives reload'
     const html = readFileSync(new URL('../map.html', import.meta.url), 'utf8');
     window.document.body.innerHTML = html;
     const root = window.document.querySelector('#cleanup-planner');
-    mountCleanupPlanner(root).useTile('Example beach', 'Ocean context · Medium SPI');
+    const planner = mountCleanupPlanner(root);
+    const name = root.querySelector('.cleanup-fields input');
+    assert.equal(planner.stageTile('Example beach', 'Ocean context · Medium SPI'), true);
+    assert.equal(name.value, 'Example beach');
+    name.value = 'Edited beach';
+    name.dispatchEvent(new window.Event('input', {bubbles: true}));
+    assert.equal(planner.stageTile('Second beach', 'Ocean context · Medium SPI'), false);
+    assert.equal(name.value, 'Edited beach');
+    planner.reviewTile();
+    assert.equal(name.value, 'Second beach');
     root.querySelector('form').dispatchEvent(new window.Event('submit', {cancelable: true}));
-    assert.match(root.querySelector('.cleanup-results').textContent, /Example beach.*Medium SPI/);
+    assert.match(root.querySelector('.cleanup-results').textContent, /Second beach.*Medium SPI/);
     assert.match(root.querySelector('.cleanup-results').textContent, /Priority pending/);
     window.document.body.innerHTML = html;
     const reloaded = window.document.querySelector('#cleanup-planner');
     mountCleanupPlanner(reloaded);
-    assert.match(reloaded.querySelector('.cleanup-results').textContent, /Example beach.*Medium SPI/);
+    assert.match(reloaded.querySelector('.cleanup-results').textContent, /Second beach.*Medium SPI/);
   } finally {
     Object.assign(globalThis, previous);
     window.happyDOM.abort();

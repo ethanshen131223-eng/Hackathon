@@ -6,10 +6,11 @@ import {createMapLayers} from './spi-layers.js';
 import {normalizeBounds, sourceUrls, requestViewportData} from './viewport.js';
 import {searchTaxa} from './species.js';
 import {queryProtectedAreas} from './protected-areas.js';
-import {createProtectedAreaDetails} from './protected-area-details.js';
+import {createProtectedAreaDetails, protectedAreaSummary} from './protected-area-details.js';
 import {createBasemapLayers} from './basemap.js';
 import {hostedDocument,selectHostedPollution,tileAtPoint} from './hosted-data.js';
 import {mountExplorerSwitch} from './explorer-switch.js';
+import {featureFocus} from './globe-state.js';
 import './style.css';
 import './globe.css';
 import './bottom-bar.css';
@@ -80,6 +81,26 @@ function refreshLayers() {
 
 const cleanupPlanner = mountCleanupPlanner($('cleanup-planner'));
 
+function prefillCleanupCandidate(panel, coordinates, name, evidence) {
+  if (!coordinates?.slice(0, 2).every(Number.isFinite) || coordinates.length < 2) return;
+  const [lng, lat] = coordinates;
+  const location = `${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
+  const applied = cleanupPlanner.stageTile(name || `Candidate near ${location}`,
+    [`Map location: ${location}`, evidence].filter(Boolean).join(' · '));
+  const block = element('div', undefined, 'cleanup-selection');
+  const button = element('button', applied ? 'Review candidate' : 'Replace draft with this site', 'primary cleanup-review');
+  button.type = 'button';
+  button.onclick = () => cleanupPlanner.reviewTile();
+  block.append(element('p', applied ? 'Cleanup candidate prefilled from this site.' : 'Your current edits are still in the planner.'), button);
+  panel.prepend(block);
+}
+
+function useProtectedSite(feature, panel) {
+  const position = featureFocus(feature);
+  if (position) prefillCleanupCandidate(panel, [position.longitude, position.latitude], feature.properties.name,
+    `Protected Planet: ${protectedAreaSummary(feature.properties)}`);
+}
+
 function showTile(feature) {
   const p = feature.properties, box = $('tile-info'); box.replaceChildren(); box.hidden = false;
   const classification = classifySPI(p.densityPiecesKm2);
@@ -101,23 +122,15 @@ function showTile(feature) {
   }
   box.append(element('p', 'Estimates describe sampled particle sizes, not every piece of marine litter.', 'species-note'));
   box.append(element('p', 'One-kilometer support cells approximate local conditions; they are not the sampled tow area.', 'species-note'));
-  if (center) {
-    const add = element('button', 'Use in cleanup planner', 'text-button');
-    add.type = 'button';
-    add.onclick = () => {
-      const location = `${center[1].toFixed(4)}°, ${center[0].toFixed(4)}°`;
-      const spi = classifySPI(p.densityPiecesKm2)?.name ?? 'Unclassified';
-      cleanupPlanner.useTile(`Shoreline near ${location}`,
-        `Ocean context near ${location} · ${spi} SPI · ${Number(p.densityPiecesKm2).toLocaleString()} floating pieces/km² · ${dates.join(', ') || 'date unavailable'}`);
-    };
-    box.append(add);
-  }
+  prefillCleanupCandidate(box, p.center, null,
+    `${classification?.name ?? 'Unclassified'} SPI · ${Number(p.densityPiecesKm2).toLocaleString()} floating pieces/km² · ${dates.join(', ') || 'Date unavailable'}`);
   const close = element('button', 'Close details', 'text-button'); close.onclick = () => { box.hidden = true; }; box.append(close);
 }
 
 function showProtected(feature) {
   const p = feature.properties, box = $('tile-info'); box.replaceChildren(); box.hidden = false;
   box.append(createProtectedAreaDetails(document, p));
+  useProtectedSite(feature, box);
   const close = element('button', 'Close details', 'text-button'); close.onclick = () => { box.hidden = true; }; box.append(close);
 }
 
@@ -201,6 +214,7 @@ async function showGradientEstimate(coordinates) {
       element('p', `${density.toLocaleString()} pieces/km²`, 'density-value'),
       element('p', `2014 estimate at ${lat.toFixed(2)}°, ${lng.toFixed(2)}°. One-degree grid cell.`),
       sourceLink('van Sebille et al. (2015) data · CC BY 4.0', globalSource), close);
+    prefillCleanupCandidate(box, [lng, lat], null, `2014 global model · ${density.toLocaleString()} microplastic pieces/km²`);
     box.hidden = false;
     return;
   }
@@ -209,6 +223,7 @@ async function showGradientEstimate(coordinates) {
     if(tile){showTile(tile);$('tile-info').prepend(element('p','Source-supported snapshot tile at this point. The gradient is a separate smoothed visualization.','notice'));}
     else {
       const box=$('tile-info');box.replaceChildren(element('h2','Smoothed snapshot overview'),element('p','There is no source-supported survey tile at this point. The gradient illustrates interpolation; it cannot provide a precise measured value here. Switch to survey tiles to inspect actual source support.'));
+      prefillCleanupCandidate(box, coordinates, null, 'No survey density available at this point');
       const close=element('button','Close details','text-button');close.onclick=()=>box.hidden=true;box.append(close);box.hidden=false;
     }return;
   }
@@ -231,6 +246,10 @@ async function showGradientEstimate(coordinates) {
       const sources=element('details'),summary=element('summary','Scientific sources');sources.append(summary);
       for(const [index,url]of p.sourceUrls.entries()){const row=element('p');row.append(sourceLink(`Source sample ${index+1}`,url));sources.append(row);}box.append(sources);
     }
+    const estimate = data.estimate;
+    prefillCleanupCandidate(box, coordinates, null, estimate
+      ? `Smoothed estimate · ${estimate.densityPiecesKm2.toLocaleString()} pieces/km² · ${estimate.observationDates.join(', ') || 'Date unavailable'}`
+      : 'No survey density available at this point');
     const close=element('button','Close details','text-button');close.onclick=()=>{box.hidden=true;};box.append(close);
   }catch(error){if(error.name!=='AbortError')$('gradient-status').textContent='This estimate could not load. Try another point.';}
 }
@@ -432,14 +451,19 @@ $('species-search').onsubmit = async event => {
     }
   } catch (error) { if (error.name !== 'AbortError') $('search-status').textContent = 'WoRMS could not be reached. Check your connection and try again.'; }
 };
+$('cleanup-pick-map').addEventListener('click', event => {
+  event.preventDefault();
+  explorerShell?.selectMode('ocean');
+  $('pollution-view').scrollIntoView({block: 'start'});
+});
 start().then(()=>{
-  explorerShell=mountExplorerSwitch({document,getOceanView:()=>{
+  explorerShell=mountExplorerSwitch({document,onProtectedSite:useProtectedSite,getOceanView:()=>{
     if(googleMap){const center=googleMap.getCenter();return {longitude:center.lng(),latitude:center.lat(),zoom:googleMap.getZoom()};}
     return state.view;
   },setOceanView:view=>{
     state.view={longitude:view.longitude,latitude:view.latitude,zoom:view.zoom};
     if(googleMap){googleMap.setCenter({lng:view.longitude,lat:view.latitude});googleMap.setZoom(view.zoom);}
     preview?.setProps({initialViewState:state.view});scheduleViewport(state.view);
-  },onOceanVisibility:visible=>{oceanVisible=visible;scheduleViewport(state.view);}});
+  },onOceanVisibility:visible=>{oceanVisible=visible;$('cleanup-click-guide').hidden=!visible;scheduleViewport(state.view);}});
 }).catch(() => { $('map-status').textContent = 'Explorer could not start. Refresh to try again.'; });
 window.addEventListener('pagehide',()=>{explorerShell?.destroy();preview?.finalize();overlay?.finalize();clearTimeout(viewportTimer);tilesRequest?.abort();gradientRequest?.abort();protectedRequest?.abort();},{once:true});

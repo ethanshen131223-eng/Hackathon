@@ -52,6 +52,8 @@ export function mountCleanupPlanner(root) {
   const status = root.querySelector('[role="status"]');
   let context = null;
   let editing = null;
+  let dirty = false;
+  let pendingTile = null;
 
   function node(tag, content) {
     const element = document.createElement(tag);
@@ -85,6 +87,8 @@ export function mountCleanupPlanner(root) {
     form.reset();
     context = null;
     editing = null;
+    dirty = false;
+    pendingTile = null;
     root.querySelector('.cleanup-context').textContent = '';
     form.querySelector('[type="submit"]').textContent = 'Save candidate';
   }
@@ -104,6 +108,7 @@ export function mountCleanupPlanner(root) {
       for (const [label, handler] of [
         ['Edit', () => {
           editing = index;
+          dirty = true;
           context = site.context ?? null;
           for (const [key, input] of inputs) input.value = site[key] ?? '';
           root.querySelector('.cleanup-context').textContent = context ?? '';
@@ -145,17 +150,30 @@ export function mountCleanupPlanner(root) {
     reset();
     save('Candidate saved.');
   });
+  form.addEventListener('input', () => { dirty = true; });
   form.querySelector('[data-new-candidate]').addEventListener('click', () => {
     reset();
     inputs.get('name').focus();
   });
   update();
+  function fillTile(name, tileContext) {
+    reset();
+    inputs.get('name').value = name.slice(0, 100);
+    context = tileContext;
+    root.querySelector('.cleanup-context').textContent = context;
+    status.textContent = 'Location and map evidence filled in. Add your shoreline survey and logistics before ranking.';
+  }
   return {
-    useTile(name, tileContext) {
-      reset();
-      inputs.get('name').value = name.slice(0, 100);
-      context = tileContext;
-      root.querySelector('.cleanup-context').textContent = context;
+    stageTile(name, tileContext) {
+      if (dirty) {
+        pendingTile = {name, tileContext};
+        return false;
+      }
+      fillTile(name, tileContext);
+      return true;
+    },
+    reviewTile() {
+      if (pendingTile) fillTile(pendingTile.name, pendingTile.tileContext);
       inputs.get('name').focus();
     },
   };

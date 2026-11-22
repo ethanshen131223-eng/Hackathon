@@ -2,7 +2,7 @@ import {queryProtectedAreas,PROTECTED_AREAS_SOURCE_URL} from './protected-areas.
 import {GLOBE_REGIONS,normalizeGlobeView,globeQueryBounds,featureFocus,filterGlobeFeatures,coordinateLabel} from './globe-state.js';
 import {createProtectedAreaDetails, protectedAreaSummary} from './protected-area-details.js';
 
-export function mountGlobeExplorer(container,{query=queryProtectedAreas,createRenderer,debounceMs=650,initialView}={}) {
+export function mountGlobeExplorer(container,{query=queryProtectedAreas,createRenderer,debounceMs=650,initialView,onProtectedSite}={}) {
   const document=container.ownerDocument;
   const events=new document.defaultView.AbortController(),eventOptions={signal:events.signal};
   let alive=true,renderer=null,request=null,timer=null,generation=0,features=[],selectedFeature=null;
@@ -18,6 +18,7 @@ export function mountGlobeExplorer(container,{query=queryProtectedAreas,createRe
   const intro=el('div','globe-intro'),introText=el('div');
   introText.append(el('h1','','Explore the ocean’s protected places.'),el('p','','Turn the globe. Choose a region. Discover the marine and coastal areas recorded by Protected Planet.'));
   const mapLink=el('a','globe-map-link','Open the ocean pollution map');mapLink.href='/map.html';intro.append(introText,mapLink);
+  if(onProtectedSite)introText.append(el('p','cleanup-map-hint','Select a protected area to prefill a Smart Cleanup Planner candidate.'));
   const workspace=el('div','globe-workspace');
   const visual=el('section','globe-visual');visual.setAttribute('aria-label','Conservation globe and controls');
   const viewport=el('div','globe-viewport');viewport.id='conservation-globe';viewport.tabIndex=0;viewport.setAttribute('role','region');
@@ -98,6 +99,7 @@ export function mountGlobeExplorer(container,{query=queryProtectedAreas,createRe
       results.querySelector('button')?.focus();
     });
     details.replaceChildren(createProtectedAreaDetails(document,feature.properties),clear);
+    onProtectedSite?.(feature,details);
     renderList();updateRenderer(true);
   }
   function move(patch,animate=true){
