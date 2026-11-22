@@ -25,6 +25,35 @@ export function assessCleanup(site, today = Date.now()) {
   };
 }
 
+export function estimateCleanup(site, recovery, today = Date.now()) {
+  const assessment = assessCleanup(site, today);
+  const protectedSite = site.habitat === 'near' || (typeof site.context === 'string' && site.context.includes('Protected Planet:'));
+  let suggestion;
+  if (site.access === 'closed' || [site.wind, site.water].includes('unsafe')) {
+    suggestion = 'Pause cleanup planning until access and conditions are suitable. Check with the site manager before choosing another date.';
+  } else if (protectedSite) {
+    suggestion = 'Coordinate with the protected-area manager. Ask which shoreline stretches can be cleaned and which habitats or wildlife areas to avoid.';
+  } else if (assessment.benefit === null) {
+    suggestion = 'Identify an accessible shoreline near the map location. Count visible litter along a measured stretch and record the survey date.';
+  } else if (site.items === 0) {
+    suggestion = 'Repeat the count on the same stretch after a period of accumulation to see whether litter is recurring.';
+  } else if (assessment.status === 'Estimated cost exceeds budget' || site.distance > 25) {
+    suggestion = 'Ask a local cleanup partner about shared transport or a closer authorized disposal point before setting a removal target.';
+  } else if (site.access !== 'confirmed' || site.wind !== 'suitable' || site.water !== 'suitable') {
+    suggestion = 'Verify shoreline access and check wind, tides, and water conditions with the cleanup organizer before scheduling.';
+  } else {
+    suggestion = 'Prioritize the most littered section of the surveyed shoreline, arrange disposal, and recount the same stretch immediately after cleanup.';
+  }
+  if (assessment.benefit === null || !Number.isFinite(recovery) || recovery < 0 || recovery > 100) {
+    return {suggestion, result: null};
+  }
+  const removed = Math.floor(site.items * (recovery / 100));
+  const remaining = site.items - removed;
+  return {suggestion, result: {
+    before: site.items, removed, remaining, beforeDensity: assessment.density, afterDensity: remaining * 100 / site.length,
+  }};
+}
+
 const fields = [
   ['name', 'Site name', 'text'],
   ['observedOn', 'Survey date', 'date'],
@@ -50,6 +79,10 @@ export function mountCleanupPlanner(root) {
   const fieldset = form.querySelector('.cleanup-fields');
   const results = root.querySelector('.cleanup-results');
   const status = root.querySelector('[role="status"]');
+  const estimateSite = root.querySelector('#cleanup-estimate-site');
+  const recovery = root.querySelector('#cleanup-recovery');
+  const estimateResults = root.querySelector('#cleanup-estimate-results');
+  const tabs = [...root.querySelectorAll('[role="tab"]')];
   let context = null;
   let editing = null;
   let dirty = false;
@@ -59,6 +92,23 @@ export function mountCleanupPlanner(root) {
     const element = document.createElement(tag);
     element.textContent = content;
     return element;
+  }
+  function showTab(index, focus = false) {
+    for (const [i, tab] of tabs.entries()) {
+      tab.tabIndex = i === index ? 0 : -1;
+      tab.setAttribute('aria-selected', String(i === index));
+      root.querySelector(`#${tab.getAttribute('aria-controls')}`).hidden = i !== index;
+    }
+    if (index === 1) renderEstimate();
+    if (focus) tabs[index].focus();
+  }
+  for (const [i, tab] of tabs.entries()) {
+    tab.addEventListener('click', () => showTab(i));
+    tab.addEventListener('keydown', event => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      showTab(event.key === 'Home' ? 0 : event.key === 'End' ? 1 : 1 - i, true);
+    });
   }
   for (const [key, label, type, minimum = 0] of fields) {
     const wrapper = node('label', label);
@@ -92,6 +142,39 @@ export function mountCleanupPlanner(root) {
     root.querySelector('.cleanup-context').textContent = '';
     form.querySelector('[type="submit"]').textContent = 'Save candidate';
   }
+  function formValues() {
+    return Object.fromEntries([...inputs].map(([key, input]) =>
+      [key, input.type === 'number' ? input.valueAsNumber : input.value.trim()]));
+  }
+  function renderEstimate() {
+    const site = estimateSite.value === '' ? {...formValues(), context} : sites[Number(estimateSite.value)];
+    if (!site) return;
+    const percent = recovery.valueAsNumber;
+    root.querySelector('#cleanup-recovery-label').textContent = `${percent}%`;
+    recovery.setAttribute('aria-valuetext', `${percent} percent`);
+    const {suggestion, result} = estimateCleanup(site, percent);
+    estimateResults.replaceChildren(node('h3', site.name || 'Current candidate'));
+    if (result) {
+      estimateResults.append(node('p', `${result.before} before → ${result.remaining} remaining · ${result.removed} items removed`),
+        node('p', `${result.beforeDensity.toFixed(1)} before → ${result.afterDensity.toFixed(1)} after · visible items per 100 m`));
+    } else {
+      estimateResults.append(node('p', 'Enter a visible litter count, the distance surveyed, and a survey date from the last 30 days to estimate improvement.'));
+    }
+    estimateResults.append(node('h4', 'Suggested next step'), node('p', suggestion));
+  }
+  function updateEstimateSites() {
+    const active = estimateSite.value;
+    estimateSite.replaceChildren(...[['', 'Current candidate'], ...sites.map((site, index) => [index, site.name])]
+      .map(([value, label]) => {
+        const option = node('option', label);
+        option.value = value;
+        return option;
+      }));
+    estimateSite.value = sites[Number(active)] ? active : '';
+    renderEstimate();
+  }
+  estimateSite.addEventListener('change', renderEstimate);
+  recovery.addEventListener('input', renderEstimate);
   function update() {
     const ranked = sites.map((site, index) => ({site, index, score: assessCleanup(site)}))
       .sort((a, b) => (b.score.priority ?? -1) - (a.score.priority ?? -1));
@@ -113,10 +196,21 @@ export function mountCleanupPlanner(root) {
           for (const [key, input] of inputs) input.value = site[key] ?? '';
           root.querySelector('.cleanup-context').textContent = context ?? '';
           form.querySelector('[type="submit"]').textContent = 'Update candidate';
+          estimateSite.value = '';
+          renderEstimate();
           inputs.get('name').focus();
+        }],
+        ['Estimate improvement', () => {
+          estimateSite.value = String(index);
+          showTab(1, true);
         }],
         ['Remove', () => {
           sites.splice(index, 1);
+          if (estimateSite.value !== '') {
+            const selected = Number(estimateSite.value);
+            if (selected === index) estimateSite.value = '';
+            else if (selected > index) estimateSite.value = String(selected - 1);
+          }
           if (editing === index) reset();
           else if (editing !== null && editing > index) editing--;
           save('Candidate removed.');
@@ -130,6 +224,7 @@ export function mountCleanupPlanner(root) {
       }
       results.append(card);
     }
+    updateEstimateSites();
   }
   function save(message) {
     try {
@@ -140,19 +235,26 @@ export function mountCleanupPlanner(root) {
   }
   form.addEventListener('submit', event => {
     event.preventDefault();
-    const values = Object.fromEntries([...inputs].map(([key, input]) =>
-      [key, input.type === 'number' ? input.valueAsNumber : input.value.trim()]));
+    const values = formValues();
     if (!values.name) { status.textContent = 'Enter a site name.'; return; }
     if (editing === null && sites.length >= 30) { status.textContent = 'Remove a candidate before adding another.'; return; }
     const site = {...values, context};
+    const savedIndex = editing ?? sites.length;
     if (editing === null) sites.push(site);
     else sites[editing] = site;
     reset();
     save('Candidate saved.');
+    estimateSite.value = String(savedIndex);
+    renderEstimate();
   });
-  form.addEventListener('input', () => { dirty = true; });
+  form.addEventListener('input', () => {
+    dirty = true;
+    if (estimateSite.value === '') renderEstimate();
+  });
   form.querySelector('[data-new-candidate]').addEventListener('click', () => {
     reset();
+    estimateSite.value = '';
+    renderEstimate();
     inputs.get('name').focus();
   });
   update();
@@ -162,6 +264,8 @@ export function mountCleanupPlanner(root) {
     context = tileContext;
     root.querySelector('.cleanup-context').textContent = context;
     status.textContent = 'Location and map evidence filled in. Add your shoreline survey and logistics before ranking.';
+    estimateSite.value = '';
+    renderEstimate();
   }
   return {
     stageTile(name, tileContext) {
@@ -172,8 +276,13 @@ export function mountCleanupPlanner(root) {
       fillTile(name, tileContext);
       return true;
     },
-    reviewTile() {
+    reviewTile(improvement = false) {
       if (pendingTile) fillTile(pendingTile.name, pendingTile.tileContext);
+      if (improvement) {
+        estimateSite.value = '';
+        showTab(1, true);
+        return;
+      }
       inputs.get('name').focus();
     },
   };

@@ -30,7 +30,7 @@ def main():
     density[:, 0] = np.where(np.isfinite(seam).any(axis=1), np.nansum(seam, axis=1), np.nan)
     density = density[:, :-1]
     density[density < 0] = np.nan
-    width, height = 1440, 680
+    width, height = 2880, 1360
     west, south, east, north = -180, -85, 180, 85
     lon = west + (np.arange(width) + 0.5) * (east - west) / width
     lat = north - (np.arange(height) + 0.5) * (north - south) / height
@@ -38,12 +38,15 @@ def main():
     values = density[np.floor(90 - lats + 0.5).astype(int), np.floor(lng + 0.5).astype(int) % 360]
 
     land = LandMask.from_file()
-    pixels = points(lng.ravel(), lats.ravel())
-    pairs = land.tree.query(pixels)
-    on_land = covers(np.asarray(land.parts, dtype=object)[pairs[1]], pixels[pairs[0]])
-    water = np.ones(width * height, dtype=np.uint8)
-    water[pairs[0][on_land]] = 0
-    water = np.asarray(Image.fromarray(water.reshape(height, width)).filter(ImageFilter.MinFilter(3))) > 0
+    polygons = np.asarray(land.parts, dtype=object)
+    water = np.full((height, width), 255, dtype=np.uint8)
+    for start in range(0, height, 64):
+        end = min(height, start + 64)
+        pixels = points(lng[start:end].ravel(), lats[start:end].ravel())
+        pairs = land.tree.query(pixels)
+        on_land = covers(polygons[pairs[1]], pixels[pairs[0]])
+        water[start:end].reshape(-1)[pairs[0][on_land]] = 0
+    water = np.asarray(Image.fromarray(water).filter(ImageFilter.MinFilter(3))) > 0
     supported = water & np.isfinite(values)
     weights = np.broadcast_to(np.cos(np.radians(lats)), values.shape)
     share = float(weights[supported].sum() / weights[water].sum())
@@ -52,6 +55,10 @@ def main():
     rgba = np.dstack((rgb, np.where(supported, 235, 0).astype(np.uint8)))
     output = ROOT / "web/public/hosted"
     Image.fromarray(rgba).save(output / "global-plastic-2014.png", optimize=True)
+    # Indexed PNG keeps the overlay compact while preserving the full coastline mask.
+    unknown = Image.fromarray(water.astype(np.uint8), mode="P")
+    unknown.putpalette([0, 0, 0, 151, 165, 172] + [0, 0, 0] * 254)
+    unknown.save(output / "ocean-no-data.png", transparency=bytes([0, 200]), optimize=True)
     metadata = {
         "bounds": [west, south, east, north],
         "waterCoverage": round(share * 100, 1),

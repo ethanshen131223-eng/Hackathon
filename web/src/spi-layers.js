@@ -7,7 +7,10 @@ export function createMapLayers({tiles, protectedAreas, spiVisible, protectedVis
     visible:spiVisible&&viewStyle!=='tiles',pickable:true,_imageCoordinateSystem:'lnglat',
     onClick:info=>{if(info.coordinate)onGradientClick?.(info.coordinate);},
   }));
-  return [...bitmaps,new GeoJsonLayer({
+  return [new BitmapLayer({
+    id:'spi-unknown-water', image:'/hosted/ocean-no-data.png', bounds:[-180,-85,180,85],
+    visible:spiVisible, pickable:false, _imageCoordinateSystem:'lnglat',
+  }), ...bitmaps,new GeoJsonLayer({
     id: 'spi-water-tiles', data: tiles, visible: spiVisible&&viewStyle==='tiles',
     filled: true, stroked: true, pickable: true,
     getFillColor: feature => [...(classifySPI(feature.properties.densityPiecesKm2)?.color ?? [130, 145, 151]), 190],

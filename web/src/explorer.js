@@ -15,7 +15,6 @@ import './style.css';
 import './globe.css';
 import './bottom-bar.css';
 import {mountCleanupPlanner} from './cleanup-planner.js';
-import {mountCurrentTimeline} from './current-timeline.js';
 import {mountWasteObservations} from './waste-observations.js';
 
 const $ = id => document.getElementById(id);
@@ -23,6 +22,7 @@ const state = {areas: [], area: null, tiles: {type: 'FeatureCollection', feature
   protected: {type: 'FeatureCollection', features: []}, gradient:{frames:[]}, species: [], view: null};
 let googleMap, overlay, preview, viewportTimer, tilesRequest, protectedRequest, searchRequest, gradientRequest, estimateRequest;
 let mapLabel = 'Natural Earth map', placeLabels = [], hostedMode = false, oceanVisible=true, explorerShell;
+let labelZoomBucket;
 
 function element(tag, text, className) {
   const node = document.createElement(tag);
@@ -39,6 +39,7 @@ function sourceLink(label, url) {
 let globalPlastic;
 let currentScenario;
 let scenarioPick = 0;
+let scenarioSelection = null;
 const globalSource = 'https://doi.org/10.6084/m9.figshare.1613256';
 const currentSource = 'https://erddap.aoml.noaa.gov/gdp/erddap/info/drifter_monthlymeans/index.html';
 const scenarioYear = () => Number($('scenario-year').value);
@@ -88,11 +89,14 @@ function layers() {
   }] : []} : global ? {frames: globalPlastic ? [{
     image: '/hosted/global-plastic-2014.png', bounds: globalPlastic.bounds,
   }] : []} : state.gradient;
-  return [...(!googleMap?createBasemapLayers({places:placeLabels,zoom:state.view?.zoom??2}):[]),...createMapLayers({tiles: state.tiles, protectedAreas: state.protected,
+  const zoom = googleMap?.getZoom() ?? state.view?.zoom ?? 2;
+  labelZoomBucket = Math.floor(zoom * 4);
+  const [background, labels] = googleMap ? [] : createBasemapLayers({places:placeLabels,zoom:labelZoomBucket / 4});
+  return [...(background ? [background] : []),...createMapLayers({tiles: state.tiles, protectedAreas: state.protected,
     spiVisible: $('heatmap-toggle').checked, protectedVisible: $('protected-toggle').checked,
     onTileClick: showTile, onProtectedClick: showProtected,gradient,
     viewStyle:$('map-style').value,onGradientClick:showGradientEstimate}),
-    ...wasteObservations.layer(googleMap?.getZoom() ?? state.view?.zoom ?? 2)];
+    ...wasteObservations.layer(zoom), ...(labels ? [labels] : [])];
 }
 
 function refreshLayers() {
@@ -101,9 +105,9 @@ function refreshLayers() {
 }
 
 const cleanupPlanner = mountCleanupPlanner($('cleanup-planner'));
-const currentTimeline = mountCurrentTimeline($('current-timeline'), loadGlobalPlastic);
 const wasteObservations = mountWasteObservations(document, {
   redraw: refreshLayers,
+  addSiteActions: prefillCleanupCandidate,
   focusWorld() {
     state.view = {longitude: 0, latitude: 0, zoom: 1};
     if (googleMap) { googleMap.setCenter({lng: 0, lat: 0}); googleMap.setZoom(1); }
@@ -111,6 +115,21 @@ const wasteObservations = mountWasteObservations(document, {
     scheduleViewport(state.view);
   },
 });
+
+async function showYearsForPoint(coordinates) {
+  await explorerShell?.selectMode('ocean');
+  $('map-style').value = 'years';
+  $('heatmap-toggle').checked = true;
+  await $('map-style').onchange();
+  if ($('map-style').value !== 'years') return;
+  const [longitude, latitude] = coordinates;
+  state.view = {longitude, latitude: Math.max(-85, Math.min(85, latitude)), zoom: 4};
+  if (googleMap) { googleMap.setCenter({lng: state.view.longitude, lat: state.view.latitude}); googleMap.setZoom(4); }
+  preview?.setProps({initialViewState: state.view});
+  scheduleViewport(state.view);
+  $('scenario-year').focus();
+  if (currentScenario) showGradientEstimate(coordinates, true);
+}
 
 function prefillCleanupCandidate(panel, coordinates, name, evidence) {
   if (!coordinates?.slice(0, 2).every(Number.isFinite) || coordinates.length < 2) return;
@@ -122,10 +141,13 @@ function prefillCleanupCandidate(panel, coordinates, name, evidence) {
   const button = element('button', applied ? 'Review candidate' : 'Replace draft with this site', 'primary cleanup-review');
   button.type = 'button';
   button.onclick = () => cleanupPlanner.reviewTile();
-  const timeline = element('button', 'Model over time', 'text-button');
+  const estimate = element('button', applied ? 'Estimate cleanup improvement' : 'Replace draft and estimate', 'text-button');
+  estimate.type = 'button';
+  estimate.onclick = () => cleanupPlanner.reviewTile(true);
+  const timeline = element('button', 'View five-year scenario', 'text-button');
   timeline.type = 'button';
-  timeline.onclick = () => currentTimeline.selectPoint(coordinates);
-  block.append(element('p', applied ? 'Cleanup candidate prefilled from this site.' : 'Your current edits are still in the planner.'), button, timeline);
+  timeline.onclick = () => showYearsForPoint(coordinates);
+  block.append(element('p', applied ? 'Cleanup candidate prefilled from this site.' : 'Your current edits are still in the planner.'), button, estimate, timeline);
   panel.prepend(block);
 }
 
@@ -220,23 +242,27 @@ async function requestGradient(bounds,zoom) {
     if(controller.signal.aborted||gradientRequest!==controller)return;
     state.gradient=gradient;refreshLayers();
     if($('map-style').value==='gradient')$('map-empty').hidden=gradient.frames.some(frame=>frame.supportedPixels>0);
-    $('gradient-status').textContent=`${hostedMode?'Exported historical snapshot. ':''}Continuous blue-to-red concentration colors, with a square-root scale to show intermediate values. Smooth estimates stop 75 km from source samples. Transparent water lacks support. This is not measured coverage; SPI classification tiles retain the fixed thresholds.`;
+    $('gradient-status').textContent=`${hostedMode?'Exported historical snapshot. ':''}Continuous blue-to-red concentration colors, with a square-root scale to show intermediate values. Smooth estimates stop 75 km from source samples. Gray water has insufficient support. SPI classification tiles retain the fixed thresholds.`;
   } catch(error) {
     if(error.name==='AbortError'||gradientRequest!==controller)return;
     $('gradient-status').textContent='Smooth layer unavailable. Check the local map service, or switch to source-supported survey tiles.';
   }
 }
 
-async function showGradientEstimate(coordinates) {
+async function showGradientEstimate(coordinates, explainMissing = false) {
   if ($('map-style').value === 'years') {
     if (!currentScenario) return;
     const [rawLongitude, latitude] = coordinates;
     const longitude = ((rawLongitude + 180) % 360 + 360) % 360 - 180;
     const {bounds: [west, south, east, north], maskWidth, maskHeight, mask} = currentScenario;
-    if (latitude <= south || latitude > north) return;
     const pixel = Math.floor((north - latitude) * maskHeight / (north - south)) * maskWidth
       + Math.floor((longitude - west) * maskWidth / (east - west));
-    if (!(mask.charCodeAt(pixel >> 3) & (128 >> (pixel % 8)))) return;
+    if (latitude <= south || latitude > north || !(mask.charCodeAt(pixel >> 3) & (128 >> (pixel % 8)))) {
+      if (explainMissing) $('map-status').textContent = 'No modeled value at this point. Click colored water.';
+      return;
+    }
+    $('map-status').textContent = 'Five-year currents scenario';
+    scenarioSelection = coordinates;
     const year = scenarioYear();
     const ticket = ++scenarioPick;
     const box = $('tile-info');
@@ -255,12 +281,24 @@ async function showGradientEstimate(coordinates) {
         element('p', `Year 0 baseline: ${format(starting[row][col])}`),
         element('p', `Location: ${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°. Simulated values on a one-degree grid.`),
         sourceLink('NOAA monthly surface currents', currentSource));
+      const improvement = element('button', 'Estimate cleanup improvement', 'text-button');
+      improvement.type = 'button';
+      improvement.onclick = () => {
+        const location = `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`;
+        if (cleanupPlanner.stageTile(`Candidate near ${location}`, `Map location: ${location} · Five-year scenario, Year ${year}: ${format(selected[row][col])}`)) {
+          cleanupPlanner.reviewTile(true);
+        } else {
+          improvement.textContent = 'Replace draft and estimate';
+          improvement.onclick = () => cleanupPlanner.reviewTile(true);
+        }
+      };
+      box.append(improvement);
     } catch {
       if (ticket !== scenarioPick) return;
       box.replaceChildren(element('p', 'The concentration for this year could not load. Try clicking again.'));
     }
     const close = element('button', 'Close details', 'text-button');
-    close.onclick = () => { box.hidden = true; };
+    close.onclick = () => { scenarioSelection = null; box.hidden = true; };
     box.append(close);
     return;
   }
@@ -342,7 +380,9 @@ async function requestProtected(bounds = viewBounds(state.view)) {
 
 function scheduleViewport(view) {
   state.view = view ?? state.view;
-  if (oceanVisible && wasteObservations.needsRedraw(googleMap?.getZoom() ?? state.view?.zoom ?? 2)) refreshLayers();
+  const zoom = googleMap?.getZoom() ?? state.view?.zoom ?? 2;
+  if (oceanVisible && (wasteObservations.needsRedraw(zoom)
+    || (!googleMap && labelZoomBucket !== Math.floor(zoom * 4)))) refreshLayers();
   tilesRequest?.abort(); protectedRequest?.abort(); gradientRequest?.abort();
   clearTimeout(viewportTimer);
   if(!oceanVisible)return;
@@ -469,6 +509,7 @@ $('area-select').onchange = event => selectArea(state.areas.find(area => area.id
 $('heatmap-toggle').onchange = () => { refreshLayers(); $('tile-info').hidden = true; };
 $('map-style').onchange = async () => {
   scenarioPick++;
+  scenarioSelection = null;
   tilesRequest?.abort();
   gradientRequest?.abort();
   $('tile-info').hidden = true;
@@ -527,6 +568,7 @@ $('scenario-year').oninput = () => {
   $('scenario-year-label').textContent = `Year ${scenarioYear()}`;
   $('scenario-year').setAttribute('aria-valuetext', `Year ${scenarioYear()}`);
   refreshLayers();
+  if (scenarioSelection && $('heatmap-toggle').checked) showGradientEstimate(scenarioSelection);
 };
 $('protected-toggle').onchange = () => {
   protectedRequest?.abort(); refreshLayers();
@@ -572,4 +614,4 @@ start().then(()=>{
   const evidence = new URLSearchParams(location.search).get('evidence');
   if (oceanVisible && ['noaa', 'river'].includes(evidence)) wasteObservations.selectKind(evidence);
 }).catch(() => { $('map-status').textContent = 'Explorer could not start. Refresh to try again.'; });
-window.addEventListener('pagehide',()=>{currentTimeline.destroy();explorerShell?.destroy();preview?.finalize();overlay?.finalize();clearTimeout(viewportTimer);tilesRequest?.abort();gradientRequest?.abort();protectedRequest?.abort();},{once:true});
+window.addEventListener('pagehide',()=>{explorerShell?.destroy();preview?.finalize();overlay?.finalize();clearTimeout(viewportTimer);tilesRequest?.abort();gradientRequest?.abort();protectedRequest?.abort();},{once:true});

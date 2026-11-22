@@ -10,8 +10,7 @@
   <body>
     <header>
       <a class="brand" href="/" aria-label="MarineGUARDer home">
-        <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3 35 9v11c0 9-15 17-15 17S5 29 5 20V9Z"/><path class="wave" d="M8 20c6-7 12 7 18 0 2-2 4-2 7-1M9 26c6-7 12 7 18 0"/></svg>
-        <span>Marine<strong>GUARDer</strong></span>
+        <img class="site-logo" src="/marineguarder-logo.png" alt="" width="138" height="92">
       </a>
     </header>
     <div class="explorer-toolbar"><div id="explorer-switch"></div><span id="cleanup-click-guide">Click a colored tile or protected boundary to prefill a cleanup candidate.</span><a class="cleanup-link" href="#cleanup-planner">Smart Cleanup Planner</a></div>
@@ -39,7 +38,7 @@
           <label class="switch-row" for="heatmap-toggle"><span><strong>Ocean concentration layer</strong><small>Show water-clipped density estimates</small></span><input id="heatmap-toggle" type="checkbox" role="switch" checked /><span class="switch" aria-hidden="true"></span></label>
           <label class="range-label" for="map-style">Pollution view</label><select id="map-style"><option value="gradient">Survey concentration gradient</option><option value="years">Five-year currents scenario</option><option value="global">Global microplastics model (2014)</option><option value="tiles">SPI classification tiles</option></select>
           <p class="layer-note" id="gradient-status" role="status">Gradient mode blends source values within 75 km. It is an unvalidated visual estimate, not measured coverage.</p>
-          <p class="source-links"><a href="?scenario=years">Open the five-year map</a> · <a href="#current-timeline">Hourly chart</a></p>
+          <p class="source-links"><a href="?scenario=years">Open the five-year map</a></p>
           <label class="switch-row secondary-switch" for="protected-toggle"><span><strong>Protected areas</strong><small>Protected Planet marine boundaries</small></span><input id="protected-toggle" type="checkbox" role="switch" /><span class="switch" aria-hidden="true"></span></label>
           <p class="layer-note" id="resolution">Grid adapts to your zoom level.</p>
           <p class="layer-note" id="protected-status" role="status"></p>
@@ -47,7 +46,7 @@
         <section class="observation-panel"><p><strong id="detection-count">0</strong> supported ocean tiles in view</p><p id="observation-dates">Click a colored tile to inspect its source.</p><button class="text-button" id="refresh-data">Refresh observations</button></section>
         <section class="species-panel"><h2>Marine life to research</h2><p class="species-note">Broad NOAA range overlap is context, not a sighting or a local impact assessment.</p><div id="species-list"></div><p class="source-links"><a href="https://www.fisheries.noaa.gov/find-species" target="_blank" rel="noopener noreferrer">NOAA species directory</a><br/><a href="https://www.fisheries.noaa.gov/highly-migratory-species" target="_blank" rel="noopener noreferrer">Highly migratory species</a></p></section>
         <section class="taxonomy-panel"><h2>Find a species</h2><form id="species-search"><label for="species-query">Common or scientific name</label><div class="search-row"><input id="species-query" type="search" placeholder="e.g. green turtle" minlength="3" required /><button type="submit">Search</button></div></form><p id="search-status" role="status">Accepted scientific names from WoRMS.</p><div id="taxon-results"></div></section>
-        <details open><summary>What this map tells you</summary><p id="data-source">Loading scientific observations…</p><p>SPI uses the displayed size range of floating plastic particles. It does not count all marine litter. Sample-based tile estimates are distinct from measured source observations.</p><p>Unobserved water is transparent, not pollution-free. Dates, modeled support, and uncertainties are available for each tile.</p><p>Coastlines use Natural Earth 1:10 million cartography. Small islands and narrow coastal features may be approximate; this is not a navigation map.</p><p>Google Maps provides natural-color basemap imagery. Pollution data, NOAA species ranges, and Protected Planet boundaries are separate sources.</p><p>Satellite detections cannot directly establish pieces/km². The trained YOLO model is kept separate from this index.</p></details>
+        <details open><summary>What this map tells you</summary><p id="data-source">Loading scientific observations…</p><p>SPI uses the displayed size range of floating plastic particles. It does not count all marine litter. Sample-based tile estimates are distinct from measured source observations.</p><p>Gray water has insufficient data for the selected layer. Dates, modeled support, and uncertainties are available for each tile.</p><p>Coastlines use Natural Earth 1:10 million cartography. Small islands and narrow coastal features may be approximate; this is not a navigation map.</p><p>Google Maps provides natural-color basemap imagery. Pollution data, NOAA species ranges, and Protected Planet boundaries are separate sources.</p><p>Satellite detections cannot directly establish pieces/km². The trained YOLO model is kept separate from this index.</p></details>
         <p class="source-links"><a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener noreferrer">Natural Earth basemap source</a></p>
       </aside>
       <section class="map-shell" aria-label="Marine debris observation map">
@@ -58,36 +57,12 @@
           <input type="range" id="scenario-year" min="0" max="5" step="1" value="0" aria-valuetext="Year 0">
           <p class="layer-note">Click colored water to compare with Year 0.</p>
         </div>
-        <div class="map-empty" id="map-empty" hidden>No compatible density observations in this view. Transparent water means insufficient data.</div>
+        <div class="map-empty" id="map-empty" hidden>No compatible density observations in this view. Gray water means insufficient data.</div>
         <div class="tile-info" id="tile-info" hidden aria-live="polite"></div>
-        <div class="legend" id="legend"><strong id="legend-title">Particle concentration</strong><span class="legend-unit" id="legend-unit">Floating pieces / km²</span><div class="legend-gradient" id="legend-gradient"></div><span class="density-scale-labels" id="density-scale-labels"></span><div id="spi-bands"></div><div class="unknown-key"><i></i><span>Transparent: insufficient support</span></div><small id="legend-note">Continuous concentration colors; exact class and source dates are in tile details.</small></div>
+        <div class="legend" id="legend"><strong id="legend-title">Particle concentration</strong><span class="legend-unit" id="legend-unit">Floating pieces / km²</span><div class="legend-gradient" id="legend-gradient"></div><span class="density-scale-labels" id="density-scale-labels"></span><div id="spi-bands"></div><div class="unknown-key"><i></i><span>Gray: insufficient data</span></div><small id="legend-note">Continuous concentration colors; exact class and source dates are in tile details.</small></div>
       </section>
     </main>
     <section id="conservation-view" hidden></section>
-    <section id="current-timeline" aria-labelledby="current-title">
-      <h2 id="current-title" tabindex="-1">Concentration over time</h2>
-      <p>Choose an offshore location on the map or enter coordinates. See how forecast surface currents could move the historical plastic field past that point.</p>
-      <form class="current-controls">
-        <label>Latitude <input name="latitude" type="number" min="-85" max="85" step="any" value="30" required></label>
-        <label>Longitude <input name="longitude" type="number" min="-180" max="180" step="any" value="-155" required></label>
-        <label>Time window <select name="horizon"><option value="24">24 hours</option><option value="48">48 hours</option><option value="72" selected>72 hours</option></select></label>
-        <button type="submit" class="primary">Run current scenario</button>
-      </form>
-      <p class="current-status" role="status"></p>
-      <div class="current-results" hidden>
-        <p class="current-unit">Modeled concentration (pieces/km²)</p>
-        <svg viewBox="0 0 640 188" role="img" aria-label="Projected concentration over time"></svg>
-        <label for="current-hour">Inspect an hour</label>
-        <input id="current-hour" type="range" min="0" step="1" value="0">
-        <output for="current-hour"></output>
-      </div>
-      <details>
-        <summary>Model and sources</summary>
-        <p>This scenario starts with the 2014 one-degree microplastics model. It traces water backward using each forecast hour’s current at the selected location, applying the same flow across the nearby area. Estimates stop where the path encounters land, missing baseline coverage, or missing current data.</p>
-        <p>The scenario excludes new pollution, mixing, settling, and changes in current across space. It illustrates transport of a historical field and does not predict today’s actual plastic concentration.</p>
-        <p><a href="https://doi.org/10.6084/m9.figshare.1613256">Baseline from van Sebille et al. (2015), CC BY 4.0</a> · <a href="https://open-meteo.com/en/docs/marine-weather-api">Marine currents via Open-Meteo, Météo-France and Copernicus Marine</a></p>
-      </details>
-    </section>
     <section id="cleanup-planner" aria-labelledby="cleanup-title">
       <h2 id="cleanup-title">Smart Cleanup Planner</h2>
       <p><a href="#pollution-view" id="cleanup-pick-map">Pick a site on the ocean map</a> to fill in its location and available pollution information, or enter a shoreline site manually. Add your recent litter counts and team logistics to rank it.</p>
@@ -104,6 +79,11 @@
           <small>Candidates are saved in this browser.</small>
         </form>
         <div>
+          <div class="cleanup-tabs" role="tablist" aria-label="Cleanup planning">
+            <button type="button" id="cleanup-shortlist-tab" role="tab" aria-selected="true" aria-controls="cleanup-shortlist">Shortlist</button>
+            <button type="button" id="cleanup-improvement-tab" role="tab" aria-selected="false" aria-controls="cleanup-improvement" tabindex="-1">Estimated improvement</button>
+          </div>
+          <div id="cleanup-shortlist" role="tabpanel" aria-labelledby="cleanup-shortlist-tab">
           <h3>Cleanup shortlist</h3>
           <ul class="cleanup-results"></ul>
           <details>
@@ -113,6 +93,16 @@
             <p>Priority averages both scores equally. These are screening assumptions. Check local requirements and day-of conditions before organizing a cleanup. Ocean SPI is included as context for candidates added from the map.</p>
           </details>
           <p><a href="https://marinedebris.noaa.gov/protocol/noaa-marine-debris-monitoring-and-assessment-project-shoreline-survey-guide">NOAA shoreline survey guide</a></p>
+          </div>
+          <div id="cleanup-improvement" role="tabpanel" aria-labelledby="cleanup-improvement-tab" hidden>
+            <label>Site <select id="cleanup-estimate-site"><option value="">Current candidate</option></select></label>
+            <label for="cleanup-recovery">Assumed share of visible litter removed <output id="cleanup-recovery-label" for="cleanup-recovery">50%</output></label>
+            <input id="cleanup-recovery" type="range" min="0" max="100" step="5" value="50" aria-valuetext="50 percent">
+            <p class="layer-note">Adjust the assumption to match your team’s capacity.</p>
+            <div id="cleanup-estimate-results" aria-live="polite"></div>
+            <p class="layer-note">Estimates apply only to visible litter on the surveyed stretch immediately after cleanup. Ocean SPI and microplastic concentrations remain separate.</p>
+            <p><a href="https://marinedebris.noaa.gov/marine-debris-handling-guidelines">NOAA debris handling guide</a></p>
+          </div>
         </div>
       </div>
     </section>

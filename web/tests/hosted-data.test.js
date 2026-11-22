@@ -2,7 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {chooseHostedCase,selectHostedPollution,tileAtPoint} from '../src/hosted-data.js';
-import {createBasemapLayers} from '../src/basemap.js';
+import {createBasemapLayers, visibleMapLabels} from '../src/basemap.js';
+
+test('overlapping labels yield to higher-ranked names until the map is zoomed in', () => {
+  const places = [
+    {name:'Preferred', kind:'country', rank:1, position:[0, 0]},
+    {name:'Secondary', kind:'country', rank:2, position:[2, 0]},
+  ];
+  assert.deepEqual(visibleMapLabels(places, 1), [places[0]]);
+  assert.deepEqual(visibleMapLabels(places, 7), places);
+});
 
 test('hosted cases draw from actually bundled sourced images and daily selection is stable',async()=>{
   const document=JSON.parse(await readFile(new URL('../public/hosted/cases.json',import.meta.url)));

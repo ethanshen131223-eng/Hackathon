@@ -1,4 +1,5 @@
 :root { --bottom-bar-height: calc(57px + env(safe-area-inset-bottom, 0px)); }
+.site-logo { display:block; width:clamp(112px,15vw,138px); height:auto; border-radius:6px; }
 html { scroll-padding-bottom: calc(var(--bottom-bar-height) + 12px); }
 body { padding-bottom: var(--bottom-bar-height); }
 .bottom-bar {

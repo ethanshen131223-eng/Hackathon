@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readFileSync} from 'node:fs';
 import {Window} from 'happy-dom';
-import {assessCleanup, mountCleanupPlanner} from '../src/cleanup-planner.js';
+import {assessCleanup, estimateCleanup, mountCleanupPlanner} from '../src/cleanup-planner.js';
 
 const today = Date.parse('2026-11-21T17:00:00Z');
 const site = {
@@ -23,6 +23,14 @@ test('stale surveys, closed sites, unsafe conditions and missing costs stay unra
   ]) assert.equal(assessCleanup({...site, ...change}, today).priority, null);
 });
 
+test('the reduction uses surveyed litter and a recovery assumption, with a site-specific next step', () => {
+  const estimate = estimateCleanup(site, 45, today);
+  assert.deepEqual(estimate.result, {before:50, removed:22, remaining:28, beforeDensity:100, afterDensity:56});
+  assert.match(estimate.suggestion, /protected-area manager/);
+  assert.equal(estimateCleanup({context:'Severe SPI'}, 50, today).result, null);
+  assert.match(estimateCleanup({...site, water:'unsafe'}, 50, today).suggestion, /Pause/);
+});
+
 test('a survey tile becomes candidate context and the candidate survives reload', () => {
   const window = new Window({url: 'http://localhost', settings: {
     disableJavaScriptEvaluation: true, disableCSSFileLoading: true, disableJavaScriptFileLoading: true,
@@ -41,8 +49,10 @@ test('a survey tile becomes candidate context and the candidate survives reload'
     name.dispatchEvent(new window.Event('input', {bubbles: true}));
     assert.equal(planner.stageTile('Second beach', 'Ocean context · Medium SPI'), false);
     assert.equal(name.value, 'Edited beach');
-    planner.reviewTile();
+    planner.reviewTile(true);
     assert.equal(name.value, 'Second beach');
+    assert.equal(root.querySelector('#cleanup-improvement').hidden, false);
+    assert.match(root.querySelector('#cleanup-estimate-results').textContent, /Second beach.*Suggested next step/);
     root.querySelector('form').dispatchEvent(new window.Event('submit', {cancelable: true}));
     assert.match(root.querySelector('.cleanup-results').textContent, /Second beach.*Medium SPI/);
     assert.match(root.querySelector('.cleanup-results').textContent, /Priority pending/);
