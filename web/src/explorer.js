@@ -15,6 +15,7 @@ import './style.css';
 import './globe.css';
 import './bottom-bar.css';
 import {mountCleanupPlanner} from './cleanup-planner.js';
+import {mountCurrentTimeline} from './current-timeline.js';
 
 const $ = id => document.getElementById(id);
 const state = {areas: [], area: null, tiles: {type: 'FeatureCollection', features: []},
@@ -36,6 +37,12 @@ function sourceLink(label, url) {
 
 let globalPlastic;
 const globalSource = 'https://doi.org/10.6084/m9.figshare.1613256';
+
+async function loadGlobalPlastic() {
+  globalPlastic ??= await hostedDocument('global-plastic-2014');
+  globalPlastic.mask ??= atob(globalPlastic.supportMask);
+  return globalPlastic;
+}
 
 function renderLegend() {
   $('spi-bands').replaceChildren();
@@ -80,6 +87,7 @@ function refreshLayers() {
 }
 
 const cleanupPlanner = mountCleanupPlanner($('cleanup-planner'));
+const currentTimeline = mountCurrentTimeline($('current-timeline'), loadGlobalPlastic);
 
 function prefillCleanupCandidate(panel, coordinates, name, evidence) {
   if (!coordinates?.slice(0, 2).every(Number.isFinite) || coordinates.length < 2) return;
@@ -91,7 +99,10 @@ function prefillCleanupCandidate(panel, coordinates, name, evidence) {
   const button = element('button', applied ? 'Review candidate' : 'Replace draft with this site', 'primary cleanup-review');
   button.type = 'button';
   button.onclick = () => cleanupPlanner.reviewTile();
-  block.append(element('p', applied ? 'Cleanup candidate prefilled from this site.' : 'Your current edits are still in the planner.'), button);
+  const timeline = element('button', 'Model over time', 'text-button');
+  timeline.type = 'button';
+  timeline.onclick = () => currentTimeline.selectPoint(coordinates);
+  block.append(element('p', applied ? 'Cleanup candidate prefilled from this site.' : 'Your current edits are still in the planner.'), button, timeline);
   panel.prepend(block);
 }
 
@@ -409,8 +420,7 @@ $('map-style').onchange = async () => {
     $('map-status').textContent = 'Global modeled surface microplastics · 2014';
     $('gradient-status').textContent = 'Loading the historical global model…';
     try {
-      globalPlastic ??= await hostedDocument('global-plastic-2014');
-      globalPlastic.mask ??= atob(globalPlastic.supportMask);
+      await loadGlobalPlastic();
     } catch {
       if ($('map-style').value === 'global') $('gradient-status').textContent = 'The global model could not load. Choose another view or try again.';
       return;
@@ -466,4 +476,4 @@ start().then(()=>{
     preview?.setProps({initialViewState:state.view});scheduleViewport(state.view);
   },onOceanVisibility:visible=>{oceanVisible=visible;$('cleanup-click-guide').hidden=!visible;scheduleViewport(state.view);}});
 }).catch(() => { $('map-status').textContent = 'Explorer could not start. Refresh to try again.'; });
-window.addEventListener('pagehide',()=>{explorerShell?.destroy();preview?.finalize();overlay?.finalize();clearTimeout(viewportTimer);tilesRequest?.abort();gradientRequest?.abort();protectedRequest?.abort();},{once:true});
+window.addEventListener('pagehide',()=>{currentTimeline.destroy();explorerShell?.destroy();preview?.finalize();overlay?.finalize();clearTimeout(viewportTimer);tilesRequest?.abort();gradientRequest?.abort();protectedRequest?.abort();},{once:true});

@@ -62,8 +62,9 @@ test('real-photo case flow, daily cap, navigation and earned cosmetic purchase w
   }
   try{
     await import('../src/app.js');
-    assert.match(window.document.querySelector('h1').textContent,/Find what/);
-    assert.equal(window.document.querySelector('a[href="/map.html"]').textContent,'Ocean explorer');
+    assert.equal(window.document.querySelector('h1').textContent,'Ocean Explorer');
+    assert.equal(window.document.querySelector('.hero-actions a[href="/map.html"]').textContent,'Open Ocean Explorer');
+    assert.equal(window.document.querySelector('.hero-map-preview').getAttribute('href'),'/map.html');
     await go('#case/random-beginner');await finishCurrentCase(true);
     assert.equal(window.document.getElementById('wallet-balance').textContent,'20');
     const saved=JSON.parse(window.localStorage.getItem('marineguarder.progress.v1'));

@@ -30,6 +30,7 @@
           <label class="switch-row" for="heatmap-toggle"><span><strong>Ocean concentration layer</strong><small>Show water-clipped density estimates</small></span><input id="heatmap-toggle" type="checkbox" role="switch" checked /><span class="switch" aria-hidden="true"></span></label>
           <label class="range-label" for="map-style">Pollution view</label><select id="map-style"><option value="gradient">Survey concentration gradient</option><option value="global">Global microplastics model (2014)</option><option value="tiles">SPI classification tiles</option></select>
           <p class="layer-note" id="gradient-status" role="status">Gradient mode blends source values within 75 km. It is an unvalidated visual estimate, not measured coverage.</p>
+          <p class="source-links"><a href="#current-timeline">See concentration over time</a></p>
           <label class="switch-row secondary-switch" for="protected-toggle"><span><strong>Protected areas</strong><small>Protected Planet marine boundaries</small></span><input id="protected-toggle" type="checkbox" role="switch" /><span class="switch" aria-hidden="true"></span></label>
           <p class="layer-note" id="resolution">Grid adapts to your zoom level.</p>
           <p class="layer-note" id="protected-status" role="status"></p>
@@ -49,6 +50,30 @@
       </section>
     </main>
     <section id="conservation-view" hidden></section>
+    <section id="current-timeline" aria-labelledby="current-title">
+      <h2 id="current-title" tabindex="-1">Concentration over time</h2>
+      <p>Choose an offshore location on the map or enter coordinates. See how forecast surface currents could move the historical plastic field past that point.</p>
+      <form class="current-controls">
+        <label>Latitude <input name="latitude" type="number" min="-85" max="85" step="any" value="30" required></label>
+        <label>Longitude <input name="longitude" type="number" min="-180" max="180" step="any" value="-155" required></label>
+        <label>Time window <select name="horizon"><option value="24">24 hours</option><option value="48">48 hours</option><option value="72" selected>72 hours</option></select></label>
+        <button type="submit" class="primary">Run current scenario</button>
+      </form>
+      <p class="current-status" role="status"></p>
+      <div class="current-results" hidden>
+        <p class="current-unit">Modeled concentration (pieces/km²)</p>
+        <svg viewBox="0 0 640 188" role="img" aria-label="Projected concentration over time"></svg>
+        <label for="current-hour">Inspect an hour</label>
+        <input id="current-hour" type="range" min="0" step="1" value="0">
+        <output for="current-hour"></output>
+      </div>
+      <details>
+        <summary>Model and sources</summary>
+        <p>This scenario starts with the 2014 one-degree microplastics model. It traces water backward using each forecast hour’s current at the selected location, applying the same flow across the nearby area. Estimates stop where the path encounters land, missing baseline coverage, or missing current data.</p>
+        <p>The scenario excludes new pollution, mixing, settling, and changes in current across space. It illustrates transport of a historical field and does not predict today’s actual plastic concentration.</p>
+        <p><a href="https://doi.org/10.6084/m9.figshare.1613256">Baseline from van Sebille et al. (2015), CC BY 4.0</a> · <a href="https://open-meteo.com/en/docs/marine-weather-api">Marine currents via Open-Meteo, Météo-France and Copernicus Marine</a></p>
+      </details>
+    </section>
     <section id="cleanup-planner" aria-labelledby="cleanup-title">
       <h2 id="cleanup-title">Smart Cleanup Planner</h2>
       <p><a href="#pollution-view" id="cleanup-pick-map">Pick a site on the ocean map</a> to fill in its location and available pollution information, or enter a shoreline site manually. Add your recent litter counts and team logistics to rank it.</p>

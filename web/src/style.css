@@ -31,6 +31,18 @@
 .cleanup-results li { border-top:1px solid #dbe7e9; padding:12px 0; }
 .cleanup-results p { margin:5px 0; overflow-wrap:anywhere; }
 .cleanup-results button + button { margin-left:14px; }
+#current-timeline { max-width:1200px; margin:24px auto; padding:26px; background:#fff; border:1px solid #dbe7e9; border-radius:12px; scroll-margin-top:16px; }
+#current-timeline > p { color:#526f79; max-width:70ch; }
+.current-controls { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); align-items:end; gap:12px; }
+.current-controls label { font-weight:600; font-size:.875rem; }
+.current-controls input,.current-controls select { display:block; width:100%; min-height:44px; margin-top:4px; border:1px solid #c9dadd; border-radius:6px; color:#214b58; }
+.current-controls input { padding:8px 12px; }
+.current-controls .primary { min-height:44px; margin:0; }
+.current-results { margin-top:16px; max-width:760px; padding:14px; background:#f0f8fb; border-radius:8px; }
+.current-results svg { display:block; width:100%; color:#335766; font-size:13px; fill:currentColor; }
+.current-results output { display:block; margin-top:10px; color:#214b58; font-weight:600; }
+.current-unit { margin:0 0 6px; color:#335766; font-size:.875rem; }
+@media (max-width:760px) { #current-timeline { margin:18px 12px; padding:16px; } .current-controls { grid-template-columns:1fr 1fr; } }
 @media (max-width:760px) { .cleanup-layout { grid-template-columns:1fr; } }
 @media (max-width:420px) { .cleanup-fields { grid-template-columns:1fr; } .explorer-toolbar { flex-wrap:wrap; } }
 #explorer-switch { display:flex; padding:4px; gap:4px; border:1px solid #cfe1e9; border-radius:12px; background:#fff; }

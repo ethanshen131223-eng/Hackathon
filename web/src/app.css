@@ -49,6 +49,10 @@ p { margin-bottom:16px; }
 .hero-art { padding:28px 30px 28px 0; display:flex; align-items:center; position:relative; }
 .hero-art::before { content:''; position:absolute; width:340px; height:340px; background:#d9ffff18; border-radius:50%; right:-80px; top:-80px; }
 .hero-scene { width:100%; border-radius:16px; border:6px solid #ffffff3b; box-shadow:0 18px 38px #073f6d38; transform:rotate(-2deg); }
+.hero-map-preview { position:relative; display:block; width:100%; overflow:hidden; border:1px solid #ffffff70; border-radius:14px; box-shadow:0 18px 38px #073f6d38; }
+.hero-map-base { display:block; width:100%; aspect-ratio:36 / 17; object-fit:fill; }
+.hero-map-overlay { position:absolute; inset:0; width:100%; height:100%; }
+.hero-map-caption { position:absolute; left:0; bottom:0; padding:7px 10px; background:#12384def; color:white; font-size:.75rem; border-top-right-radius:8px; }
 .scene-stamp { position:absolute; right:42px; bottom:34px; padding:10px 15px; border-radius:10px; background:white; color:#245470; font-size:.85rem; box-shadow:0 5px 20px #12384d20; }
 .scene-stamp strong { display:block; color:#126f88; }
 .hero-actions,.button-row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }

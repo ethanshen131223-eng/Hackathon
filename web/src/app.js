@@ -79,11 +79,16 @@ function renderHome() {
   const welcome = el('div', 'welcome-line');
   welcome.append(el('p', '', 'Your ocean field station'), el('span', 'welcome-tag', 'Observe. Identify. Understand.'));
   const hero = el('section', 'hero'), copy = el('div', 'hero-copy'), art = el('div', 'hero-art');
-  copy.append(el('h1', '', 'Find what doesn’t belong.'), el('p', '', 'A shape at the waterline. A clue worth checking. Inspect real, annotated photos and explain what the evidence can—and can’t—tell us.'));
+  copy.append(el('h1', '', 'Ocean Explorer'), el('p', '', 'Explore where floating plastic has been recorded, discover marine protected areas, and compare sites for a shoreline cleanup.'));
   const actions = el('div', 'hero-actions');
-  actions.append(link('Start a field case', '#case/random-beginner', 'light'), link('Try today’s puzzle', '#daily', 'ghost')); copy.append(actions);
-  art.append(image(CASES[0].sceneUrl, 'Real FML camera photo of litter regions on water', 'hero-scene'));
-  const stamp = el('div', 'scene-stamp'); stamp.append(el('strong', '', 'Real photos. Real annotations.'), el('span', '', 'FML dataset · CC BY 4.0')); art.append(stamp);
+  actions.append(link('Open Ocean Explorer', '/map.html', 'light'), link('Start a field case', '#case/random-beginner', 'ghost')); copy.append(actions);
+  const preview = el('a', 'hero-map-preview');
+  preview.href = '/map.html';
+  preview.setAttribute('aria-label', 'Open Ocean Explorer map');
+  preview.append(image('/globe/earth-map.jpg', '', 'hero-map-base'),
+    image('/hosted/global-plastic-2014.png', '', 'hero-map-overlay'),
+    el('span', 'hero-map-caption', 'Modeled surface microplastics · 2014'));
+  art.append(preview);
   hero.append(copy, art); main.append(welcome, hero, stats());
   main.append(sectionHeading('Choose your next field case', 'Short, guided investigations. No expertise needed.', link('View all cases', '#cases', 'secondary')));
   const grid = el('div', 'case-grid'); CASES.forEach(item => grid.append(caseCard(item))); main.append(grid);
