@@ -94,9 +94,11 @@ export function mountWasteObservations(document, {redraw, focusWorld, addSiteAct
       const [lng, lat, id, ...fields] = group.samples[index];
       popup.replaceChildren(node('h2', catalogs[type].title), node('p', `${lat.toFixed(4)}°, ${lng.toFixed(4)}°`));
       let evidence;
+      let record;
       if (type === 'noaa') {
         const [setting, measurement, unit, date, method, ocean, beach, depth, mesh, reference, accession] = fields;
         evidence = ['NOAA field sample', setting, measurement == null ? null : `${number.format(measurement)} ${unit ?? ''}`, date].filter(Boolean).join(' · ');
+        record = {kind:setting?.startsWith('Beach') ? 'beach' : 'sample'};
         popup.append(node('p', measurement == null
           ? 'Concentration unavailable'
           : `${number.format(measurement)} ${unit || '(unit unreported)'}`));
@@ -110,6 +112,7 @@ export function mountWasteObservations(document, {redraw, focusWorld, addSiteAct
           `https://www.ncei.noaa.gov/access/metadata/landing-page/bin/iso?id=gov.noaa.nodc:${accession}`));
       } else {
         evidence = `Modeled river outfall · ${number.format(fields[0])} metric tonnes per year`;
+        record = {kind:'river', value:fields[0]};
         popup.append(node('p', `${number.format(fields[0])} metric tonnes per year`),
           node('p', `Midpoint scenario from Meijer et al. (2021), outfall ${id}. This estimates plastic entering the ocean.`));
       }
@@ -133,7 +136,7 @@ export function mountWasteObservations(document, {redraw, focusWorld, addSiteAct
       close.onclick = () => { popup.hidden = true; };
       if (group.samples.length > 1) popup.append(node('p', `Record ${index + 1} of ${group.samples.length} grouped nearby`), controls);
       popup.append(close);
-      addSiteActions?.(popup, [lng, lat], null, evidence);
+      addSiteActions?.(popup, [lng, lat], null, evidence, record);
     }
     render();
     popup.hidden = false;

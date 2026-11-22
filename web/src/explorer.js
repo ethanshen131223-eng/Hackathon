@@ -15,6 +15,8 @@ import './style.css';
 import './globe.css';
 import './bottom-bar.css';
 import {mountCleanupPlanner} from './cleanup-planner.js';
+import {selectCleanupMethod} from './cleanup-methods.js';
+import {cleanupPriority, identifyWaterbody} from './cleanup-site.js';
 import {mountWasteObservations} from './waste-observations.js';
 
 const $ = id => document.getElementById(id);
@@ -132,30 +134,58 @@ async function showYearsForPoint(coordinates) {
   if (currentScenario) showGradientEstimate(coordinates, true);
 }
 
-function prefillCleanupCandidate(panel, coordinates, name, evidence) {
+function prefillCleanupCandidate(panel, coordinates, name, evidence, record, manualOnly = false) {
   if (!coordinates?.slice(0, 2).every(Number.isFinite) || coordinates.length < 2) return;
   const [lng, lat] = coordinates;
   const location = `${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
-  const applied = cleanupPlanner.stageTile(name || `Candidate near ${location}`,
-    [`Map location: ${location}`, evidence].filter(Boolean).join(' · '));
+  const metadata = {evidence:record};
+  const context = [`Map location: ${location}`, evidence].filter(Boolean).join(' · ');
+  const stage = () => cleanupPlanner.stageTile(name || metadata.location?.name || `Candidate near ${location}`, context, metadata);
+  const applied = manualOnly ? null : stage();
   const block = element('div', undefined, 'cleanup-selection');
+  const area = element('p', 'Identifying the mapped area…');
+  const action = element('p', '');
+  action.className = 'cleanup-next-action';
+  function updateAction() {
+    const method = selectCleanupMethod({context,...metadata}, cleanupPriority(metadata, {benefit:null}));
+    area.textContent = metadata.location
+      ? `${metadata.location.name} (${metadata.location.type}) · ${method.basis}`
+      : method.basis;
+    action.textContent = method.action;
+  }
+  updateAction();
+  hostedDocument('waterbodies').then(data => {
+    metadata.location = identifyWaterbody(data.areas, coordinates);
+    cleanupPlanner.refreshMapSite(metadata);
+    if (block.isConnected) updateAction();
+  }).catch(() => {});
   const button = element('button', applied ? 'Review candidate' : 'Replace draft with this site', 'primary cleanup-review');
   button.type = 'button';
   button.onclick = () => cleanupPlanner.reviewTile();
-  const estimate = element('button', applied ? 'Estimate cleanup improvement' : 'Replace draft and estimate', 'text-button');
+  const estimate = element('button', applied === false ? 'Replace draft and plan cleanup' : 'View cleanup plan and estimate', 'text-button');
   estimate.type = 'button';
-  estimate.onclick = () => cleanupPlanner.reviewTile(true);
+  estimate.onclick = () => {
+    if (manualOnly && !stage()) {
+      estimate.textContent = 'Replace draft and plan cleanup';
+      estimate.onclick = () => cleanupPlanner.reviewTile(true);
+      return;
+    }
+    cleanupPlanner.reviewTile(true);
+  };
   const timeline = element('button', 'View five-year scenario', 'text-button');
   timeline.type = 'button';
   timeline.onclick = () => showYearsForPoint(coordinates);
-  block.append(element('p', applied ? 'Cleanup candidate prefilled from this site.' : 'Your current edits are still in the planner.'), button, estimate, timeline);
+  block.append(area, action);
+  if (!manualOnly) block.append(element('p', applied ? 'Cleanup candidate prefilled from this site.' : 'Your current edits are still in the planner.'), button);
+  block.append(estimate);
+  if ($('map-style').value !== 'years') block.append(timeline);
   panel.prepend(block);
 }
 
 function useProtectedSite(feature, panel) {
   const position = featureFocus(feature);
   if (position) prefillCleanupCandidate(panel, [position.longitude, position.latitude], feature.properties.name,
-    `Protected Planet: ${protectedAreaSummary(feature.properties)}`);
+    `Protected Planet: ${protectedAreaSummary(feature.properties)}`, {kind:'protected'});
 }
 
 function showTile(feature) {
@@ -180,7 +210,8 @@ function showTile(feature) {
   box.append(element('p', 'Estimates describe sampled particle sizes, not every piece of marine litter.', 'species-note'));
   box.append(element('p', 'One-kilometer support cells approximate local conditions; they are not the sampled tow area.', 'species-note'));
   prefillCleanupCandidate(box, p.center, null,
-    `${classification?.name ?? 'Unclassified'} SPI · ${Number(p.densityPiecesKm2).toLocaleString()} floating pieces/km² · ${dates.join(', ') || 'Date unavailable'}`);
+    `${classification?.name ?? 'Unclassified'} SPI · ${Number(p.densityPiecesKm2).toLocaleString()} floating pieces/km² · ${dates.join(', ') || 'Date unavailable'}`,
+    p.kind === 'simulated' ? null : {kind:'spi', band:classification?.name});
   const close = element('button', 'Close details', 'text-button'); close.onclick = () => { box.hidden = true; }; box.append(close);
 }
 
@@ -282,18 +313,8 @@ async function showGradientEstimate(coordinates, explainMissing = false) {
         element('p', `Year 0 baseline: ${format(starting[row][col])}`),
         element('p', `Location: ${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°. Simulated values on a one-degree grid.`),
         sourceLink('NOAA monthly surface currents', currentSource));
-      const improvement = element('button', 'Estimate cleanup improvement', 'text-button');
-      improvement.type = 'button';
-      improvement.onclick = () => {
-        const location = `${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`;
-        if (cleanupPlanner.stageTile(`Candidate near ${location}`, `Map location: ${location} · Five-year scenario, Year ${year}: ${format(selected[row][col])}`)) {
-          cleanupPlanner.reviewTile(true);
-        } else {
-          improvement.textContent = 'Replace draft and estimate';
-          improvement.onclick = () => cleanupPlanner.reviewTile(true);
-        }
-      };
-      box.append(improvement);
+      prefillCleanupCandidate(box, [longitude, latitude], null,
+        `Five-year scenario, Year ${year}: ${format(selected[row][col])}`, null, true);
     } catch {
       if (ticket !== scenarioPick) return;
       box.replaceChildren(element('p', 'The concentration for this year could not load. Try clicking again.'));

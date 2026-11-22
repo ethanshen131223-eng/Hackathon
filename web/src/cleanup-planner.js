@@ -1,4 +1,5 @@
 import {cleanupSettings, selectCleanupMethod} from './cleanup-methods.js';
+import {cleanupPriority, WATERBODY_SOURCE} from './cleanup-site.js';
 
 const STORAGE_KEY = 'marineguarder.cleanup-planner.v1';
 const DAY = 86_400_000;
@@ -87,6 +88,7 @@ export function mountCleanupPlanner(root) {
   const estimateResults = root.querySelector('#cleanup-estimate-results');
   const tabs = [...root.querySelectorAll('[role="tab"]')];
   let context = null;
+  let mapSite = null;
   let editing = null;
   let dirty = false;
   let pendingTile = null;
@@ -118,7 +120,7 @@ export function mountCleanupPlanner(root) {
     const select = Array.isArray(type);
     const input = document.createElement(select ? 'select' : 'input');
     if (select) {
-      for (const [value, text] of [['', 'Unknown'], ...type]) {
+      for (const [value, text] of [['', key === 'setting' ? 'Use mapped setting' : 'Unknown'], ...type]) {
         const option = node('option', text);
         option.value = value;
         input.append(option);
@@ -139,6 +141,7 @@ export function mountCleanupPlanner(root) {
   function reset() {
     form.reset();
     context = null;
+    mapSite = null;
     editing = null;
     dirty = false;
     pendingTile = null;
@@ -150,7 +153,7 @@ export function mountCleanupPlanner(root) {
       [key, input.type === 'number' ? input.valueAsNumber : input.value.trim()]));
   }
   function renderEstimate() {
-    const site = estimateSite.value === '' ? {...formValues(), context} : sites[Number(estimateSite.value)];
+    const site = estimateSite.value === '' ? {...formValues(), context, ...mapSite} : sites[Number(estimateSite.value)];
     if (!site) return;
     const percent = recovery.valueAsNumber;
     root.querySelector('#cleanup-recovery-label').textContent = `${percent}%`;
@@ -164,11 +167,29 @@ export function mountCleanupPlanner(root) {
       estimateResults.append(node('p', 'Enter a visible litter count, the distance surveyed, and a survey date from the last 30 days to estimate improvement.'));
     }
     estimateResults.append(node('h4', 'Suggested next step'), node('p', suggestion));
-    const method = selectCleanupMethod(site);
+    const severity = cleanupPriority(site, assessCleanup(site));
+    const method = selectCleanupMethod(site, severity);
     const process = node('section', '');
     process.className = 'cleanup-method';
-    process.append(node('h4', method.title), node('p', method.basis),
+    const action = node('p', method.action);
+    action.className = 'cleanup-next-action';
+    const priority = node('p', `Priority: ${severity.level}. ${severity.label}`);
+    process.append(node('h4', 'Do this next'), action,
+      priority,
+      node('h4', method.title), node('p', method.basis),
       node('p', `Field evidence: ${method.validation}`), node('p', `Drones: ${method.drones}`));
+    if (severity.kind === 'river') {
+      const citation = node('a', 'Meijer et al. river outfall data');
+      citation.href = 'https://doi.org/10.6084/m9.figshare.14515590';
+      priority.append(' ', citation);
+    }
+    if (site.location) {
+      const geography = node('p', `Mapped area: ${site.location.name} (${site.location.type}). `);
+      const credit = node('a', 'Natural Earth');
+      credit.href = WATERBODY_SOURCE;
+      geography.append(credit);
+      process.prepend(geography);
+    }
     if (method.hold) process.append(node('p', 'Planning only. Resolve the reported access or conditions issue before any fieldwork.'));
     const steps = node('ol', '');
     steps.append(...method.steps.map(step => node('li', step)));
@@ -216,6 +237,7 @@ export function mountCleanupPlanner(root) {
           editing = index;
           dirty = true;
           context = site.context ?? null;
+          mapSite = {location:site.location, evidence:site.evidence};
           for (const [key, input] of inputs) input.value = site[key] ?? '';
           root.querySelector('.cleanup-context').textContent = context ?? '';
           form.querySelector('[type="submit"]').textContent = 'Update candidate';
@@ -261,7 +283,7 @@ export function mountCleanupPlanner(root) {
     const values = formValues();
     if (!values.name) { status.textContent = 'Enter a site name.'; return; }
     if (editing === null && sites.length >= 30) { status.textContent = 'Remove a candidate before adding another.'; return; }
-    const site = {...values, context};
+    const site = {...values, context, ...mapSite};
     const savedIndex = editing ?? sites.length;
     if (editing === null) sites.push(site);
     else sites[editing] = site;
@@ -281,28 +303,30 @@ export function mountCleanupPlanner(root) {
     inputs.get('name').focus();
   });
   update();
-  function fillTile(name, tileContext) {
+  function fillTile(name, tileContext, metadata) {
     reset();
     inputs.get('name').value = name.slice(0, 100);
     context = tileContext;
-    const inferred = selectCleanupMethod({context});
-    inputs.get('setting').value = inferred.setting === 'unknown' ? '' : inferred.setting;
+    mapSite = metadata ?? null;
     root.querySelector('.cleanup-context').textContent = context;
     status.textContent = 'Location and map evidence filled in. Add your shoreline survey and logistics before ranking.';
     estimateSite.value = '';
     renderEstimate();
   }
   return {
-    stageTile(name, tileContext) {
+    stageTile(name, tileContext, metadata) {
       if (dirty) {
-        pendingTile = {name, tileContext};
+        pendingTile = {name, tileContext, metadata};
         return false;
       }
-      fillTile(name, tileContext);
+      fillTile(name, tileContext, metadata);
       return true;
     },
+    refreshMapSite(metadata) {
+      if (mapSite === metadata && estimateSite.value === '') renderEstimate();
+    },
     reviewTile(improvement = false) {
-      if (pendingTile) fillTile(pendingTile.name, pendingTile.tileContext);
+      if (pendingTile) fillTile(pendingTile.name, pendingTile.tileContext, pendingTile.metadata);
       if (improvement) {
         estimateSite.value = '';
         showTab(1, true);

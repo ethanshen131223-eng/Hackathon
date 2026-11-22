@@ -1,3 +1,5 @@
+import {classifyCleanupSite, cleanupAction} from './cleanup-site.js';
+
 const shoreGuide = ['NOAA shoreline survey guide', 'https://marinedebris.noaa.gov/protocol/noaa-marine-debris-monitoring-and-assessment-project-shoreline-survey-guide'];
 const droneStudy = ['NOAA drone field tests in Oregon and Texas', 'https://coastalscience.noaa.gov/news/drones-with-specialized-cameras-could-enhance-detection-removal-of-beach-debris-video/'];
 const wetlandsGuide = ['NOAA intertidal removal practices', 'https://marinedebris.noaa.gov/other-reports/best-management-practices-removal-debris-wetlands-and-other-intertidal-areas'];
@@ -7,6 +9,7 @@ const reefRemoval = ['NOAA’s Papahānaumokuākea removal results', 'https://sa
 export const cleanupSettings = [
   ['shore', 'Accessible beach or shoreline'], ['protected', 'Protected or sensitive habitat'],
   ['river', 'River mouth or drainage channel'], ['offshore', 'Offshore water or reef'],
+  ['bay', 'Bay, gulf or other coastal waterway'],
 ];
 
 const methods = {
@@ -58,6 +61,18 @@ const methods = {
       'Report material type and measured weight removed, and log debris that remains for follow-up. If the available evidence describes only dispersed microplastics, prioritize source prevention and additional monitoring of the area.',
     ],
   },
+  bay: {
+    title: 'Survey shoreline accumulation and coordinate targeted pickup',
+    drones: 'Optional for mapping visible accumulations on long or inaccessible banks, with approval and ground checks.',
+    validation: 'NOAA’s guidance for intertidal removal is based on debris recovery operations. Its shoreline survey protocol establishes a repeatable way to measure accumulation before and after an intervention.',
+    sources: [wetlandsGuide, shoreGuide, droneStudy],
+    steps: [
+      'Give the harbor or coastal manager the selected location and source. Ask where public access is available and which wetlands, habitats, vessel lanes and harbor structures need protection.',
+      'Compare repeat observations at accessible shoreline accumulation points, such as the ends of public beaches or sheltered banks. Record visible item types, counts, survey length, date and conditions. Check whether litter returns after winds or tides change.',
+      'Arrange authorized hand pickup on confirmed accessible shores. Ask the manager to handle debris in navigation lanes, sensitive habitat or water through the appropriate removal team. Agree on a receiving facility and record what was removed.',
+      'Recount the same shoreline section after work and again later. If the same litter repeatedly arrives, share the record with the local stormwater or harbor operator to investigate upstream prevention.',
+    ],
+  },
   unknown: {
     title: 'Verify the location before choosing a cleanup method',
     drones: 'Skip drones for the initial check. Consider an authorized survey only when ground or bank access is limited.',
@@ -72,14 +87,15 @@ const methods = {
   },
 };
 
-export function selectCleanupMethod(site = {}) {
+export function selectCleanupMethod(site = {}, severity = {level:'unknown',kind:'unknown'}) {
   const evidence = typeof site.context === 'string' ? site.context : '';
-  let setting = cleanupSettings.some(([key]) => key === site.setting) ? site.setting : '';
+  const configured = cleanupSettings.some(([key]) => key === site.setting) ? site.setting : '';
+  let setting = classifyCleanupSite({...site, setting:configured});
   if (site.habitat === 'near' || evidence.includes('Protected Planet:')) setting = 'protected';
   else if (!setting && evidence.includes('Modeled river outfall')) setting = 'river';
   else if (!setting && /NOAA field sample · Beach\b/.test(evidence)) setting = 'shore';
   const method = methods[setting || 'unknown'];
   const hold = site.access === 'closed' || site.wind === 'unsafe' || site.water === 'unsafe';
-  return {...method, setting: setting || 'unknown', hold,
+  return {...method, setting: setting || 'unknown', hold, action:cleanupAction(setting, severity, hold),
     basis: setting ? cleanupSettings.find(([key]) => key === setting)?.[1] : 'Site setting still needs confirmation'};
 }
