@@ -28,9 +28,14 @@
         </section>
         <section class="layer-panel">
           <label class="switch-row" for="heatmap-toggle"><span><strong>Ocean concentration layer</strong><small>Show water-clipped density estimates</small></span><input id="heatmap-toggle" type="checkbox" role="switch" checked /><span class="switch" aria-hidden="true"></span></label>
-          <label class="range-label" for="map-style">Pollution view</label><select id="map-style"><option value="gradient">Survey concentration gradient</option><option value="global">Global microplastics model (2014)</option><option value="tiles">SPI classification tiles</option></select>
+          <label class="range-label" for="map-style">Pollution view</label><select id="map-style"><option value="gradient">Survey concentration gradient</option><option value="years">Five-year currents scenario</option><option value="global">Global microplastics model (2014)</option><option value="tiles">SPI classification tiles</option></select>
+          <div id="scenario-year-controls" hidden>
+            <label class="range-label" for="scenario-year">Simulated time <output id="scenario-year-label" for="scenario-year">Year 0</output></label>
+            <input type="range" id="scenario-year" min="0" max="5" step="1" value="0">
+            <p class="layer-note">Move the slider to change the map. Click colored water to compare the selected year with the starting concentration.</p>
+          </div>
           <p class="layer-note" id="gradient-status" role="status">Gradient mode blends source values within 75 km. It is an unvalidated visual estimate, not measured coverage.</p>
-          <p class="source-links"><a href="#current-timeline">See concentration over time</a></p>
+          <p class="source-links"><a href="?scenario=years">Open the five-year map</a> · <a href="#current-timeline">Hourly chart</a></p>
           <label class="switch-row secondary-switch" for="protected-toggle"><span><strong>Protected areas</strong><small>Protected Planet marine boundaries</small></span><input id="protected-toggle" type="checkbox" role="switch" /><span class="switch" aria-hidden="true"></span></label>
           <p class="layer-note" id="resolution">Grid adapts to your zoom level.</p>
           <p class="layer-note" id="protected-status" role="status"></p>

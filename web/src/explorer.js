@@ -36,7 +36,11 @@ function sourceLink(label, url) {
 }
 
 let globalPlastic;
+let currentScenario;
+let scenarioPick = 0;
 const globalSource = 'https://doi.org/10.6084/m9.figshare.1613256';
+const currentSource = 'https://erddap.aoml.noaa.gov/gdp/erddap/info/drifter_monthlymeans/index.html';
+const scenarioYear = () => Number($('scenario-year').value);
 
 async function loadGlobalPlastic() {
   globalPlastic ??= await hostedDocument('global-plastic-2014');
@@ -47,8 +51,9 @@ async function loadGlobalPlastic() {
 function renderLegend() {
   $('spi-bands').replaceChildren();
   const global = $('map-style').value === 'global';
+  const years = $('map-style').value === 'years';
   const continuous = $('map-style').value !== 'tiles';
-  const scale = global ? globalPlastic?.colorScale : state.gradient.colorScale;
+  const scale = years ? currentScenario?.colorScale : global ? globalPlastic?.colorScale : state.gradient.colorScale;
   $('legend-title').textContent=continuous?'Particle concentration':'Sea Pollution Index';
   $('legend-unit').textContent=continuous?'pieces / km² · square-root color scale':'Floating pieces / km²';
   $('density-scale-labels').hidden=!continuous;
@@ -62,6 +67,10 @@ function renderLegend() {
     $('legend-title').textContent = 'Global model (2014)';
     $('legend-note').textContent = 'Floating microplastic estimates from van Sebille et al. (2015). Native grid is 1°.';
   }
+  if (years) {
+    $('legend-title').textContent = `Currents scenario · Year ${scenarioYear()}`;
+    $('legend-note').textContent = 'Fixed color scale across years. This is a simulation from the 2014 baseline.';
+  }
   for (const band of SPI_BANDS) {
     const row = element('div', undefined, 'spi-band');
     const swatch = element('i'); swatch.style.background = `rgb(${band.color})`;
@@ -72,7 +81,10 @@ function renderLegend() {
 
 function layers() {
   const global = $('map-style').value === 'global';
-  const gradient = global ? {frames: globalPlastic ? [{
+  const years = $('map-style').value === 'years';
+  const gradient = years ? {frames: currentScenario ? [{
+    image: `/hosted/current-scenario/year-${scenarioYear()}.png`, bounds: currentScenario.bounds,
+  }] : []} : global ? {frames: globalPlastic ? [{
     image: '/hosted/global-plastic-2014.png', bounds: globalPlastic.bounds,
   }] : []} : state.gradient;
   return [...(!googleMap?createBasemapLayers({places:placeLabels,zoom:state.view?.zoom??2}):[]),...createMapLayers({tiles: state.tiles, protectedAreas: state.protected,
@@ -205,6 +217,42 @@ async function requestGradient(bounds,zoom) {
 }
 
 async function showGradientEstimate(coordinates) {
+  if ($('map-style').value === 'years') {
+    if (!currentScenario) return;
+    const [rawLongitude, latitude] = coordinates;
+    const longitude = ((rawLongitude + 180) % 360 + 360) % 360 - 180;
+    const {bounds: [west, south, east, north], maskWidth, maskHeight, mask} = currentScenario;
+    if (latitude <= south || latitude > north) return;
+    const pixel = Math.floor((north - latitude) * maskHeight / (north - south)) * maskWidth
+      + Math.floor((longitude - west) * maskWidth / (east - west));
+    if (!(mask.charCodeAt(pixel >> 3) & (128 >> (pixel % 8)))) return;
+    const year = scenarioYear();
+    const ticket = ++scenarioPick;
+    const box = $('tile-info');
+    box.replaceChildren(element('p', 'Loading the modeled concentration…'));
+    box.hidden = false;
+    try {
+      const [starting, selected] = await Promise.all([
+        hostedDocument('current-scenario/year-0'), hostedDocument(`current-scenario/year-${year}`),
+      ]);
+      if (ticket !== scenarioPick || $('map-style').value !== 'years' || year !== scenarioYear()) return;
+      const row = Math.floor(90 - latitude + 0.5);
+      const col = (Math.floor(longitude + 0.5) + 360) % 360;
+      const format = value => value == null ? 'Unavailable' : `${value.toLocaleString()} pieces/km²`;
+      box.replaceChildren(element('h2', `Currents scenario · Year ${year}`),
+        element('p', format(selected[row][col]), 'density-value'),
+        element('p', `Year 0 baseline: ${format(starting[row][col])}`),
+        element('p', `Location: ${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°. Simulated values on a one-degree grid.`),
+        sourceLink('NOAA monthly surface currents', currentSource));
+    } catch {
+      if (ticket !== scenarioPick) return;
+      box.replaceChildren(element('p', 'The concentration for this year could not load. Try clicking again.'));
+    }
+    const close = element('button', 'Close details', 'text-button');
+    close.onclick = () => { box.hidden = true; };
+    box.append(close);
+    return;
+  }
   if ($('map-style').value === 'global') {
     if (!globalPlastic) return;
     const {bounds, maskWidth, maskHeight, mask, values} = globalPlastic;
@@ -291,7 +339,7 @@ function scheduleViewport(view) {
     const bounds = viewBounds(state.view), zoom = googleMap?.getZoom() ?? state.view.zoom;
     const style = $('map-style').value;
     requestViewportData(bounds, zoom, {
-      requestTiles: style === 'global' ? () => {} : requestTiles,
+      requestTiles: ['global', 'years'].includes(style) ? () => {} : requestTiles,
       requestProtected,
       protectedEnabled: $('protected-toggle').checked,
       requestGradient,
@@ -408,15 +456,36 @@ $('random-area').onclick = () => selectArea(chooseArea(state.areas, state.area?.
 $('area-select').onchange = event => selectArea(state.areas.find(area => area.id === event.target.value));
 $('heatmap-toggle').onchange = () => { refreshLayers(); $('tile-info').hidden = true; };
 $('map-style').onchange = async () => {
+  scenarioPick++;
   tilesRequest?.abort();
   gradientRequest?.abort();
   $('tile-info').hidden = true;
   $('map-empty').hidden = true;
   const global = $('map-style').value === 'global';
-  $('resolution').hidden = global;
-  $('detection-count').closest('.observation-panel').hidden = global;
+  const years = $('map-style').value === 'years';
+  $('scenario-year-controls').hidden = !years;
+  $('resolution').hidden = global || years;
+  $('detection-count').closest('.observation-panel').hidden = global || years;
   refreshLayers();
-  if (global) {
+  if (years) {
+    $('map-status').textContent = 'Five-year currents scenario';
+    $('gradient-status').textContent = 'Loading the five-year map…';
+    try {
+      currentScenario ??= await hostedDocument('current-scenario/index');
+      currentScenario.mask ??= atob(currentScenario.supportMask);
+    } catch {
+      if ($('map-style').value === 'years') $('gradient-status').textContent = 'The five-year map could not load. Try selecting it again.';
+      return;
+    }
+    if ($('map-style').value !== 'years') return;
+    $('gradient-status').replaceChildren(
+      document.createTextNode(`Uses repeating NOAA monthly mean currents and the 2014 baseline. Covers ${currentScenario.coverageOfBaseline}% of baseline ocean area. The same starting plastic is redistributed each year. No added pollution, removal, or year-specific forecast. `),
+      sourceLink('NOAA current data', currentSource), document.createTextNode(' · '), sourceLink('2014 baseline', globalSource));
+    state.view = {longitude: 0, latitude: 0, zoom: 1};
+    if (googleMap) { googleMap.setCenter({lng: 0, lat: 0}); googleMap.setZoom(1); }
+    preview?.setProps({initialViewState: state.view});
+    refreshLayers();
+  } else if (global) {
     $('map-status').textContent = 'Global modeled surface microplastics · 2014';
     $('gradient-status').textContent = 'Loading the historical global model…';
     try {
@@ -437,6 +506,13 @@ $('map-style').onchange = async () => {
     $('gradient-status').textContent = 'Select a survey tile to see its estimated density and source.';
   }
   scheduleViewport(state.view);
+};
+$('scenario-year').oninput = () => {
+  scenarioPick++;
+  $('tile-info').hidden = true;
+  $('scenario-year-label').textContent = `Year ${scenarioYear()}`;
+  $('scenario-year').setAttribute('aria-valuetext', `Year ${scenarioYear()}`);
+  refreshLayers();
 };
 $('protected-toggle').onchange = () => {
   protectedRequest?.abort(); refreshLayers();
@@ -475,5 +551,9 @@ start().then(()=>{
     if(googleMap){googleMap.setCenter({lng:view.longitude,lat:view.latitude});googleMap.setZoom(view.zoom);}
     preview?.setProps({initialViewState:state.view});scheduleViewport(state.view);
   },onOceanVisibility:visible=>{oceanVisible=visible;$('cleanup-click-guide').hidden=!visible;scheduleViewport(state.view);}});
+  if (new URLSearchParams(location.search).get('scenario') === 'years' && oceanVisible) {
+    $('map-style').value = 'years';
+    $('map-style').onchange();
+  }
 }).catch(() => { $('map-status').textContent = 'Explorer could not start. Refresh to try again.'; });
 window.addEventListener('pagehide',()=>{currentTimeline.destroy();explorerShell?.destroy();preview?.finalize();overlay?.finalize();clearTimeout(viewportTimer);tilesRequest?.abort();gradientRequest?.abort();protectedRequest?.abort();},{once:true});
