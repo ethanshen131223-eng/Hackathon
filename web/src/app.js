@@ -7,7 +7,9 @@ import {EVIDENCE_CHOICES,EVIDENCE_LIMITS,checkReasoning} from './case-reasoning.
 import {matchOutline} from './outlines.js';
 import {mountOutlineTools} from './outline-tools.js';
 import {hostedDocument,chooseHostedCase} from './hosted-data.js';
+import {mountShoreCleaner} from './shore-cleaner.js';
 import './app.css';
+import './bottom-bar.css';
 
 const main = document.getElementById('main-content');
 let profile = loadProfile(), toastTimer, cleanup = null, routeVersion = 0;
@@ -315,7 +317,11 @@ async function drawDatasetCase(difficulty = 'beginner', daily = false) {
 }
 
 function renderPlay() {
-  main.append(heading('Practice with a purpose.', 'Focus on spotting pollution in real photos, building a daily habit, and recording what the evidence supports.'));
+  main.append(heading('The ocean arcade.', 'Sharpen your observation skills, take on a daily challenge, or spend a little time cleaning a virtual shore.'));
+  const featured=el('section','shore-arcade-feature'),featureWords=el('div');
+  featureWords.append(el('span','tag','New arcade game'),el('h2','','Shore Cleaner'),el('p','','Walk the beach, scoop up litter, and recycle your haul. Unlock upgrades, hatch sea companions, and discover new shores.'),el('small','','Keyboard, pointer & touch · Progress saved on this device'));
+  const featureActions=el('div','shore-arcade-actions');featureActions.append(el('span','shore-arcade-icon','🏖️'),link('Play Shore Cleaner','#shore-cleaner'));
+  featured.append(featureWords,featureActions);main.append(featured);
   const grid = el('div', 'game-grid');
   for (const [icon, title, description, path, action] of [
     ['◈', 'Random field case', 'Draw a real FML photo and find the published litter regions. Build a collection of sourced observations.', '#case/random-beginner', 'Draw a field photo'],
@@ -407,7 +413,7 @@ async function renderRoute() {
   const [route = 'home', id] = location.hash.slice(1).split('/');
   main.replaceChildren();
   document.querySelectorAll('[data-nav]').forEach(a => {
-    const active = a.dataset.nav === route || (a.dataset.nav === 'cases' && ['case', 'workbench', 'creator', 'puzzle'].includes(route)) || (a.dataset.nav === 'play' && ['size-game', 'food-web', 'sea'].includes(route));
+    const active = a.dataset.nav === route || (a.dataset.nav === 'cases' && ['case', 'workbench', 'creator', 'puzzle'].includes(route)) || (a.dataset.nav === 'play' && ['size-game', 'food-web', 'sea','shore-cleaner'].includes(route));
     if (active) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   });
   try {
@@ -424,6 +430,7 @@ async function renderRoute() {
       main.replaceChildren();mounted = mountCase(item, {daily: true});
     }
     else if (route === 'play') renderPlay();
+    else if (route === 'shore-cleaner') mounted = mountShoreCleaner(main,{onAward,notify,navigate});
     else if (['size-game','food-web'].includes(route)) {navigate('play');return;}
     else if (route === 'sea') mounted = mountCleanupGame(main, {onAward, notify, navigate});
     else if (route === 'collection') await renderCollection(version);
@@ -449,6 +456,7 @@ async function renderRoute() {
 
 let secret = '';
 window.addEventListener('keydown', event => {
+  if(event.composedPath().some(node=>node?.classList?.contains('shore-game-host')))return;
   if (event.ctrlKey || event.metaKey || event.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName) || event.target.isContentEditable) return;
   if (event.key.length !== 1) return;
   secret = (secret + event.key.toUpperCase()).slice(-3);

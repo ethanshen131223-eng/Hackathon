@@ -166,6 +166,41 @@ def test_observation_area_shortlist_prefers_real_high_density_regions():
     assert areas[0]["dates"] == ["2020-01-02"]
 
 
+def test_all_observed_regions_are_available_without_a_twelve_area_cutoff():
+    observations = []
+    for index in range(14):
+        sample = observation(str(index), 500, 500, 25 + index)
+        sample.update(longitude=-170 + index * 10, latitude=10,
+                      region="Independent ocean")
+        observations.append(sample)
+    grid = make_grid(observations)
+    result = grid.areas()
+    assert len(result["areas"]) == 14
+    assert sum(area["observationCount"] for area in result["areas"]) == 14
+    assert result["metadata"]["limited"] is False
+    limited = grid.areas(limit=3)
+    assert len(limited["areas"]) == 3
+    assert limited["metadata"]["totalAreaCount"] == 14
+    assert limited["metadata"]["limited"] is True
+
+
+def test_area_bounds_include_bounded_visual_support_across_the_dateline():
+    sample = observation("dateline", 500, 500, 120)
+    sample.update(longitude=179.9, latitude=0)
+    area = make_grid([sample]).areas()["areas"][0]
+    west, south, east, north = area["bounds"]
+    assert west < 179.3 and east < -179.4
+    assert south < -.67 and north > .67
+
+
+def test_source_point_ids_survive_latest_cell_selection_for_export_auditing():
+    older = observation("older", 200, 500, 25)
+    older["observedAt"] = "2010-01-01"
+    selected = observation("selected", 200, 500, 50)
+    feature = make_grid([older, selected]).tiles(*WORLD, zoom=13)["features"][0]
+    assert feature["properties"]["observationIds"] == ["selected"]
+
+
 def test_polar_observation_has_equal_area_and_wrapped_viewport_visibility():
     polar = dict(id="polar", longitude=179.999, latitude=89.9,
                  densityPiecesKm2=100, observedAt="2020-01-02", kind="measured",

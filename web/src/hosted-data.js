@@ -27,11 +27,13 @@ export function chooseHostedCase(document,{difficulty='beginner',exclude=[],day,
 
 const spans=bounds=>bounds[0]>bounds[2]?[[bounds[0],180],[-180,bounds[2]]]:[[bounds[0],bounds[2]]];
 function intersects(a,b){return a[1]<=b[3]&&a[3]>=b[1]&&spans(a).some(x=>spans(b).some(y=>x[0]<=y[1]&&x[1]>=y[0]));}
-export function selectHostedPollution(document,bounds) {
+export function selectHostedPollution(document,bounds,zoom=6) {
   const snapshots=document.snapshots.filter(snapshot=>intersects(snapshot.bounds,bounds)),unique=new Map();
   for(const snapshot of snapshots)for(const feature of snapshot.tiles.features)unique.set(feature.id??feature.properties.id,feature);
-  return {tiles:{type:'FeatureCollection',features:[...unique.values()],metadata:{resolutionKm2:25,precomputedSnapshot:true,exportedAt:document.exportedAt}},
-    gradient:{frames:snapshots.flatMap(snapshot=>snapshot.gradient.frames),precomputedSnapshot:true,exportedAt:document.exportedAt}};
+  const resolution=document.resolutionKm2??snapshots[0]?.tiles.metadata?.resolutionKm2??1;
+  const field=zoom<4&&document.overviewGradient?document.overviewGradient:snapshots[0]?.gradient??document.overviewGradient??{};
+  return {tiles:{type:'FeatureCollection',features:[...unique.values()],metadata:{resolutionKm2:resolution,precomputedSnapshot:true,exportedAt:document.exportedAt}},
+    gradient:{...field,frames:zoom<4&&document.overviewGradient?document.overviewGradient.frames:snapshots.flatMap(snapshot=>snapshot.gradient.frames),precomputedSnapshot:true,exportedAt:document.exportedAt}};
 }
 function inRing([x,y],ring){
   let inside=false;

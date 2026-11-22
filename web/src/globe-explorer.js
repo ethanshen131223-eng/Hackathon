@@ -1,11 +1,12 @@
 import {queryProtectedAreas,PROTECTED_AREAS_SOURCE_URL} from './protected-areas.js';
 import {GLOBE_REGIONS,normalizeGlobeView,globeQueryBounds,featureFocus,filterGlobeFeatures,coordinateLabel} from './globe-state.js';
+import {createProtectedAreaDetails} from './protected-area-details.js';
 
-export function mountGlobeExplorer(container,{query=queryProtectedAreas,createRenderer,debounceMs=650}={}) {
+export function mountGlobeExplorer(container,{query=queryProtectedAreas,createRenderer,debounceMs=650,initialView}={}) {
   const document=container.ownerDocument;
   const events=new document.defaultView.AbortController(),eventOptions={signal:events.signal};
   let alive=true,renderer=null,request=null,timer=null,generation=0,features=[],selectedId=null;
-  let view=normalizeGlobeView(GLOBE_REGIONS[0]),protectedVisible=true,currentRegion=GLOBE_REGIONS[0].id;
+  let view=normalizeGlobeView(initialView??GLOBE_REGIONS[0]),protectedVisible=true,currentRegion=initialView?'custom':GLOBE_REGIONS[0].id;
   const el=(tag,className='',text='')=>{const node=document.createElement(tag);node.className=className;node.textContent=text;return node;};
   const sourceLink=(text,url)=>{
     const link=el('a','',text);link.href=url;link.target='_blank';link.rel='noopener noreferrer';return link;
@@ -41,6 +42,7 @@ export function mountGlobeExplorer(container,{query=queryProtectedAreas,createRe
   const region=el('select');region.id='globe-region';
   for(const place of GLOBE_REGIONS){const option=el('option','',place.name);option.value=place.id;region.append(option);}
   const customOption=el('option','','Current globe view');customOption.value='custom';customOption.hidden=true;region.append(customOption);
+  if(initialView){customOption.hidden=false;region.value='custom';}
   region.addEventListener('change',()=>chooseRegion(region.value),eventOptions);
   const random=button('Surprise me',()=>{
     const choices=GLOBE_REGIONS.filter(place=>place.id!==currentRegion);chooseRegion(choices[Math.floor(Math.random()*choices.length)].id);
@@ -67,7 +69,7 @@ export function mountGlobeExplorer(container,{query=queryProtectedAreas,createRe
   sources.append(attribution,limitations,earthCredit);root.append(intro,workspace,sources);container.replaceChildren(root);
 
   function rotationStep(){return Math.max(1,12/2**Math.max(0,view.zoom-1));}
-  function updateRenderer(){coordinates.textContent=`Centered at ${coordinateLabel(view)}`;renderer?.update({view,features,selectedId,protectedVisible});}
+  function updateRenderer(animate=false){coordinates.textContent=`Centered at ${coordinateLabel(view)}`;renderer?.update({view,features,selectedId,protectedVisible,animate});}
   function clearDetails(){details.replaceChildren(el('h2','','Choose a protected area'),el('p','','Select a shaded boundary or an area in the list to read its source details.'));}
   function renderList(){
     const focusedId=results.contains(document.activeElement)?document.activeElement.dataset.areaId:null;
@@ -85,21 +87,16 @@ export function mountGlobeExplorer(container,{query=queryProtectedAreas,createRe
   }
   function selectFeature(feature){
     selectedId=feature.id;const focus=featureFocus(feature);if(focus)view=focus;
-    details.replaceChildren(el('span','area-source-label','Protected Planet record'),el('h2','',feature.properties.name));
-    const dl=el('dl');
-    for(const [label,value]of [['Designation',feature.properties.designation],['Source status',feature.properties.status],['Realm',feature.properties.realm]])dl.append(el('dt','',label),el('dd','',value??'Not supplied'));
-    details.append(dl);
-    if(/^https:\/\/www\.protectedplanet\.net\//.test(feature.properties.sourceUrl??''))details.append(sourceLink('View the Protected Planet record',feature.properties.sourceUrl));
-    details.append(el('p','area-limits','Source-reported designation and status. Check the original record for site rules and management information.'));
-    renderList();updateRenderer();
+    details.replaceChildren(createProtectedAreaDetails(document,feature.properties));
+    renderList();updateRenderer(true);
   }
-  function move(patch){
+  function move(patch,animate=true){
     view=normalizeGlobeView({...view,...patch});currentRegion='custom';customOption.hidden=false;region.value='custom';
-    updateRenderer();scheduleQuery();return view;
+    updateRenderer(animate);scheduleQuery();return view;
   }
   function chooseRegion(id){
     const place=GLOBE_REGIONS.find(item=>item.id===id);if(!place)return;
-    currentRegion=id;region.value=id;view=normalizeGlobeView(place);filter.value='';updateRenderer();loadAreas();
+    currentRegion=id;region.value=id;view=normalizeGlobeView(place);filter.value='';updateRenderer(true);loadAreas();
   }
   function invalidate(){generation++;request?.abort();clearTimeout(timer);timer=null;}
   function scheduleQuery(){
@@ -137,9 +134,14 @@ export function mountGlobeExplorer(container,{query=queryProtectedAreas,createRe
   updateRenderer();clearDetails();
   const rendererReady=Promise.resolve().then(async()=>{
     const create=createRenderer??(await import('./globe-renderer.js')).createGlobeRenderer;
-    const result=await create({container:viewport,onViewChange:next=>move(next),onSelect:selectFeature,onError:renderingError,onReady:()=>{if(alive)rendererStatus.textContent='';}});
+    const result=await create({container:viewport,onViewChange:(next,interaction={})=>{
+      if(!alive)return;
+      // Deck owns transition frames. Keep the destination for queries and later controls.
+      if(interaction.inTransition){coordinates.textContent=`Centered at ${coordinateLabel(normalizeGlobeView(next))}`;return;}
+      move(next,false);
+    },onSelect:selectFeature,onError:renderingError,onReady:()=>{if(alive)rendererStatus.textContent='';}});
     if(!alive){result.destroy();return;}renderer=result;rendererStatus.textContent='';updateRenderer();
   }).catch(renderingError);
   const ready=Promise.allSettled([rendererReady,loadAreas()]);
-  return {ready,destroy(){if(!alive)return;alive=false;invalidate();events.abort();renderer?.destroy();root.remove();}};
+  return {ready,getView:()=>({...view}),destroy(){if(!alive)return;alive=false;invalidate();events.abort();renderer?.destroy();root.remove();}};
 }

@@ -42,7 +42,7 @@
 .area-details h2 { font-size:1.2rem; margin:7px 0 12px; overflow-wrap:anywhere; }
 .area-details p,.area-details a { font-size:.875rem; line-height:1.6; }
 .area-source-label { font-size:.75rem; color:#568278; }
-.area-details dl { display:grid; grid-template-columns:90px 1fr; gap:6px 12px; font-size:.875rem; line-height:1.5; }
+.area-details dl { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.1fr); gap:9px 12px; font-size:.8rem; line-height:1.5; }
 .area-details dt { color:#6a808e; }.area-details dd { margin:0; overflow-wrap:anywhere; }
 .area-details .area-limits { font-size:.75rem; margin:12px 0 0; color:#657d89; }
 .globe-sources { margin-top:22px; padding:0 5px; max-width:1180px; }

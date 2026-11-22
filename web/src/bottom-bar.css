@@ -1,0 +1,38 @@
+:root { --bottom-bar-height: calc(57px + env(safe-area-inset-bottom, 0px)); }
+html { scroll-padding-bottom: calc(var(--bottom-bar-height) + 12px); }
+body { padding-bottom: var(--bottom-bar-height); }
+.bottom-bar {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 40;
+  padding: 6px clamp(12px, 3vw, 40px) calc(6px + env(safe-area-inset-bottom, 0px));
+  background: #12384d;
+  border-top: 1px solid #28657d;
+}
+.bottom-bar nav {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.bottom-bar a {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  color: #e6f5fa;
+  line-height: 1.2;
+  font-size: 0.875rem;
+  text-align: center;
+  text-decoration: none;
+}
+.bottom-bar a:hover, .bottom-bar a[aria-current="page"] {
+  color: #12384d;
+  background: #d5f3f2;
+}
+.app-toast { bottom: calc(var(--bottom-bar-height) + 12px); }
+@media (max-width: 640px) {
+  :root { --bottom-bar-height: calc(105px + env(safe-area-inset-bottom, 0px)); }
+  .bottom-bar nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .bottom-bar a { padding-inline: 4px; }
+}

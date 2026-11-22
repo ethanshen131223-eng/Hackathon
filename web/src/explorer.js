@@ -6,15 +6,19 @@ import {createMapLayers} from './spi-layers.js';
 import {normalizeBounds, sourceUrls, requestViewportData} from './viewport.js';
 import {searchTaxa} from './species.js';
 import {queryProtectedAreas} from './protected-areas.js';
+import {createProtectedAreaDetails} from './protected-area-details.js';
 import {createBasemapLayers} from './basemap.js';
 import {hostedDocument,selectHostedPollution,tileAtPoint} from './hosted-data.js';
+import {mountExplorerSwitch} from './explorer-switch.js';
 import './style.css';
+import './globe.css';
+import './bottom-bar.css';
 
 const $ = id => document.getElementById(id);
 const state = {areas: [], area: null, tiles: {type: 'FeatureCollection', features: []},
   protected: {type: 'FeatureCollection', features: []}, gradient:{frames:[]}, species: [], view: null};
 let googleMap, overlay, preview, viewportTimer, tilesRequest, protectedRequest, searchRequest, gradientRequest, estimateRequest;
-let mapLabel = 'Natural Earth map', placeLabels = [], hostedMode = false;
+let mapLabel = 'Natural Earth map', placeLabels = [], hostedMode = false, oceanVisible=true, explorerShell;
 
 function element(tag, text, className) {
   const node = document.createElement(tag);
@@ -29,6 +33,15 @@ function sourceLink(label, url) {
 }
 
 function renderLegend() {
+  $('spi-bands').replaceChildren();
+  const continuous=$('map-style').value==='gradient',scale=state.gradient.colorScale;
+  $('legend-title').textContent=continuous?'Particle concentration':'Sea Pollution Index';
+  $('legend-unit').textContent=continuous?'pieces / km² · square-root color scale':'Floating pieces / km²';
+  $('density-scale-labels').hidden=!continuous;
+  $('density-scale-labels').textContent=scale?`0   ·   ${Math.round(scale.maximum/4).toLocaleString()}   ·   ≥${Math.round(scale.maximum).toLocaleString()}`:'Loading concentration scale…';
+  $('legend-gradient').style.background=continuous?'linear-gradient(90deg,#307ed8,#4cb8d3,#eef1b2,#f59664,#d22f3e)':'linear-gradient(90deg,#307ed8,#369d5b,#f0d135,#ef8523,#d22f2f)';
+  $('legend-note').textContent=continuous?'Blue: lower concentration; red: higher. Colors saturate at the source’s 95th percentile. Exact SPI class is in tile details.':'Fixed SPI classification thresholds. Unobserved water remains unknown.';
+  $('spi-bands').hidden=continuous;
   for (const band of SPI_BANDS) {
     const row = element('div', undefined, 'spi-band');
     const swatch = element('i'); swatch.style.background = `rgb(${band.color})`;
@@ -45,6 +58,7 @@ function layers() {
 }
 
 function refreshLayers() {
+  renderLegend();
   const next = layers(); overlay?.setProps({layers: next}); preview?.setProps({layers: next});
 }
 
@@ -74,10 +88,7 @@ function showTile(feature) {
 
 function showProtected(feature) {
   const p = feature.properties, box = $('tile-info'); box.replaceChildren(); box.hidden = false;
-  box.append(element('h2', p.name ?? 'Protected area'));
-  box.append(element('p', `${p.designation ?? ''} ${p.status ?? ''}`.trim()));
-  box.append(element('p', 'Boundary source: Protected Planet / UNEP-WCMC and IUCN. Protection does not imply pollution-free water.'));
-  if (p.sourceUrl) box.append(sourceLink('View Protected Planet record', p.sourceUrl));
+  box.append(createProtectedAreaDetails(document, p));
   const close = element('button', 'Close details', 'text-button'); close.onclick = () => { box.hidden = true; }; box.append(close);
 }
 
@@ -97,7 +108,7 @@ async function requestTiles(bounds, zoom) {
   params.set('zoom', zoom);
   try {
     let data;
-    if(hostedMode)data=selectHostedPollution(await hostedDocument('pollution-snapshots',controller.signal),bounds).tiles;
+    if(hostedMode)data=selectHostedPollution(await hostedDocument('pollution-snapshots',controller.signal),bounds,zoom).tiles;
     else {
       const response = await fetch(`/api/tiles?${params}`, {signal: controller.signal});
       if (!response.ok) throw new Error('Tile API unavailable');data=await response.json();
@@ -125,7 +136,7 @@ async function requestGradient(bounds,zoom) {
   $('gradient-status').textContent='Blending source observations and masking land…';
   try {
     let gradient;
-    if(hostedMode)gradient=selectHostedPollution(await hostedDocument('pollution-snapshots',controller.signal),bounds).gradient;
+    if(hostedMode)gradient=selectHostedPollution(await hostedDocument('pollution-snapshots',controller.signal),bounds,zoom).gradient;
     else{
       const response=await fetch(`/api/gradient?${params}`,{signal:controller.signal});
       if(!response.ok)throw new Error('Gradient unavailable');gradient=await response.json();
@@ -133,7 +144,7 @@ async function requestGradient(bounds,zoom) {
     if(controller.signal.aborted||gradientRequest!==controller)return;
     state.gradient=gradient;refreshLayers();
     if($('map-style').value==='gradient')$('map-empty').hidden=gradient.frames.some(frame=>frame.supportedPixels>0);
-    $('gradient-status').textContent=`${hostedMode?'Exported historical snapshot. ':''}Smooth estimate between observations, limited to 75 km from a source sample. Transparent areas lack support. This is not measured coverage; use survey tiles to check the original support.`;
+    $('gradient-status').textContent=`${hostedMode?'Exported historical snapshot. ':''}Continuous blue-to-red concentration colors, with a square-root scale to show intermediate values. Smooth estimates stop 75 km from source samples. Transparent water lacks support. This is not measured coverage; SPI classification tiles retain the fixed thresholds.`;
   } catch(error) {
     if(error.name==='AbortError'||gradientRequest!==controller)return;
     $('gradient-status').textContent='Smooth layer unavailable. Check the local map service, or switch to source-supported survey tiles.';
@@ -192,6 +203,7 @@ function scheduleViewport(view) {
   state.view = view ?? state.view;
   tilesRequest?.abort(); protectedRequest?.abort(); gradientRequest?.abort();
   clearTimeout(viewportTimer);
+  if(!oceanVisible)return;
   viewportTimer = setTimeout(() => {
     if (!state.view && !googleMap) return;
     const bounds = viewBounds(state.view), zoom = googleMap?.getZoom() ?? state.view.zoom;
@@ -270,7 +282,7 @@ async function loadAreas() {
   catch {data=await hostedDocument('pollution-areas');hostedMode=true;}
   state.areas = data.areas;
   $('data-source').textContent = typeof data.source === 'string' ? data.source : (data.source?.name ?? 'Scientific observations. See individual tile sources.');
-  if(hostedMode)$('data-source').textContent+=` Exported snapshot ${data.exportedAt?.slice(0,10)}; not a live feed. Hosted survey tiles retain a fixed 25 km² grid. Observation dates and source links remain available.`;
+  if(hostedMode)$('data-source').textContent+=` Exported snapshot ${data.exportedAt?.slice(0,10)}; not a live feed. Hosted survey tiles retain a fixed ${data.resolutionKm2??1} km² grid across ${data.areas.length} observed regions. Observation dates and source links remain available; unsampled water is unknown.`;
   $('area-select').replaceChildren();
   for (const area of state.areas) $('area-select').append(new Option(area.name, area.id));
   $('area-select').disabled = !state.areas.length; $('random-area').disabled = !state.areas.length;
@@ -330,4 +342,14 @@ $('species-search').onsubmit = async event => {
     }
   } catch (error) { if (error.name !== 'AbortError') $('search-status').textContent = 'WoRMS could not be reached. Check your connection and try again.'; }
 };
-start().catch(() => { $('map-status').textContent = 'Explorer could not start. Refresh to try again.'; });
+start().then(()=>{
+  explorerShell=mountExplorerSwitch({document,getOceanView:()=>{
+    if(googleMap){const center=googleMap.getCenter();return {longitude:center.lng(),latitude:center.lat(),zoom:googleMap.getZoom()};}
+    return state.view;
+  },setOceanView:view=>{
+    state.view={longitude:view.longitude,latitude:view.latitude,zoom:view.zoom};
+    if(googleMap){googleMap.setCenter({lng:view.longitude,lat:view.latitude});googleMap.setZoom(view.zoom);}
+    preview?.setProps({initialViewState:state.view});scheduleViewport(state.view);
+  },onOceanVisibility:visible=>{oceanVisible=visible;scheduleViewport(state.view);}});
+}).catch(() => { $('map-status').textContent = 'Explorer could not start. Refresh to try again.'; });
+window.addEventListener('pagehide',()=>{explorerShell?.destroy();preview?.finalize();overlay?.finalize();clearTimeout(viewportTimer);tilesRequest?.abort();gradientRequest?.abort();protectedRequest?.abort();},{once:true});

@@ -29,3 +29,11 @@ test('the no-key map has natural imagery and name labels with a consistent tint'
   assert.equal(layers[0].id,'natural-earth-background');assert.deepEqual(layers[0].props.tintColor,[255,255,255]);
   assert.equal(layers[0].props.pickable,false);assert.equal(layers[1].props.getText(layers[1].props.data[0]),'Ocean');
 });
+
+test('global view uses one overview field while regional views retain fine fields and actual grid metadata',()=>{
+  const tile={id:'a',properties:{center:[0,0]},geometry:{type:'Polygon',coordinates:[[[0,0],[1,0],[1,1],[0,0]]]}};
+  const document={snapshotZoom:13,resolutionKm2:1,snapshots:[{bounds:[0,0,1,1],tiles:{features:[tile],metadata:{resolutionKm2:1}},gradient:{frames:[{image:'fine',bounds:[0,0,1,1]}]}}],overviewGradient:{frames:[{image:'world',bounds:[-180,-85,180,85]}]}};
+  assert.equal(selectHostedPollution(document,[-180,-80,180,80],2).gradient.frames[0].image,'world');
+  assert.equal(selectHostedPollution(document,[-1,-1,2,2],6).gradient.frames[0].image,'fine');
+  assert.equal(selectHostedPollution(document,[-1,-1,2,2],6).tiles.metadata.resolutionKm2,1);
+});

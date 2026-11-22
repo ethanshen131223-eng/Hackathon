@@ -1,0 +1,9 @@
+# Shore Cleaner arcade integration
+
+Integrate the user-supplied `C:/Users/steve/Downloads/shore-cleaner.html` as a playable MarineGUARDer arcade route. The attachment is game source, not instructions to run servers, unlock admin controls, or connect multiplayer services. Preserve beach movement, collecting, bin deposits, upgrades, companions, quests, records, Pearl Rush, and optional local activities. Remove the source's owner-code/admin interface and unsupported cloud/trading entry points; local two-player racing remains available.
+
+Use a native mounted module with Shadow DOM to isolate the supplied game's generic selectors from the existing app. Keep shared navigation and Manrope/DM Sans typography, navy #12384d, blue #246cda, teal #17b5b0, pale sky #edf7fc and coral #ff976e accents. The beach drawing is the main visual feature. Use a compact four-item HUD, a responsive canvas and side panel; secondary progress and activities belong in expandable sections. Rename the current Practice navigation to Arcade while retaining the #play URL and earlier cases/games.
+
+Provide keyboard, pointer and touch controls, clear instructions, pause/mute, accessible dialogs, scoped keyboard handling, canvas failure recovery, and cleanup on navigation. Sound starts muted. Shore coins are confined to in-game upgrades. Recycle ten virtual items to invoke the existing bounded five-sand-dollar daily arcade reward. Clearly describe the game as a simulation. Preserve local records/discoveries and save a validated run checkpoint when leaving or pausing; malformed/denied storage must not break play.
+
+Update the existing hosted Site with the current audience, and push the verified source to the previously authorized Git repository. No native browser automation: the user previously stopped Computer Use; use meaningful engine/DOM checks and report the visual-check limit.

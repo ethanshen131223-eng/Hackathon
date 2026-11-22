@@ -13,6 +13,15 @@ from ocean_grid import classify_density
 RADIUS_KM = 75.0
 BANDWIDTH_KM = 25.0
 METHOD = 'Gaussian-weighted visual interpolation within 75 km of a source point (25 km bandwidth). Not a validated pollution model or measured coverage.'
+GRADIENT_COLORS = [[48,126,216],[76,184,211],[238,241,178],[245,150,100],[210,47,62]]
+
+
+def density_colors(density, maximum):
+    """Continuous color only; it never changes the underlying concentration."""
+    values = np.sqrt(np.clip(np.nan_to_num(density, nan=0), 0, max(1, maximum)))
+    anchors = np.linspace(0, math.sqrt(max(1, maximum)), len(GRADIENT_COLORS))
+    colors = np.asarray(GRADIENT_COLORS)
+    return np.stack([np.interp(values, anchors, colors[:, channel]) for channel in range(3)], axis=-1)
 
 
 class GradientSurface:
@@ -23,6 +32,10 @@ class GradientSurface:
         self.land = land
         self.coordinates = np.radians(np.array([[o['longitude'], o['latitude']] for o in observations], dtype=float).reshape(-1, 2))
         self.values = np.array([o['densityPiecesKm2'] for o in observations], dtype=float)
+        maximum = max(1.0, float(np.percentile(self.values, 95))) if len(self.values) else 1.0
+        self.color_scale = {'minimum':0,'maximum':maximum,'transform':'sqrt','colors':GRADIENT_COLORS,
+                            'units':'pieces/km²','domainBasis':'0 to the 95th percentile of the selected source concentrations; colors saturate above this endpoint, displayed densities do not.',
+                            'note':'Continuous concentration colors use a square-root scale; these are separate from the fixed SPI classification colors.'}
 
     def _field(self, longitude, latitude):
         lon = np.asarray(longitude, dtype=float).reshape(-1)
@@ -72,10 +85,10 @@ class GradientSurface:
                 'materialScope':sorted({o['materialScope'] for o in samples}), 'uncertainty':None}
 
     @lru_cache(maxsize=12)
-    def render(self, west, south, east, north, width=256, height=160):
+    def render(self, west, south, east, north, width=512, height=320):
         if not all(math.isfinite(v) for v in (west,south,east,north)) or not -90 <= south < north <= 90:
             raise ValueError('Invalid gradient bounds')
-        width, height = max(32,min(768,int(width))), max(32,min(512,int(height)))
+        width, height = max(32,min(1536,int(width))), max(32,min(1024,int(height)))
         if abs(east-west)>=360: west,east=-180,180
         else: west,east=(west+180)%360-180,(east+180)%360-180
         if west==east: raise ValueError('Gradient longitude span must be positive')
@@ -97,10 +110,7 @@ class GradientSurface:
                 inside=covers(np.asarray(self.land.parts,dtype=object)[pairs[1]],pts[pairs[0]])
                 water[np.unique(pairs[0][inside])]=0
             mask=np.asarray(Image.fromarray(water.reshape(height,width)).filter(ImageFilter.MinFilter(3)))
-            anchors=np.log1p([0,50,100,200,600,60000])
-            colors=np.array([[48,126,216],[54,157,91],[240,209,53],[239,133,35],[210,47,47],[132,28,62]])
-            values=np.log1p(np.nan_to_num(density,nan=0))
-            rgb=np.stack([np.interp(values,anchors,colors[:,channel]) for channel in range(3)],axis=1)
+            rgb=density_colors(density,self.color_scale['maximum'])
             # Opacity fades near the model's fixed support boundary, not by changing
             # its estimated density. Unsupported and land pixels are transparent.
             alpha=185*np.clip((RADIUS_KM-nearest)/15,0,1)
@@ -108,7 +118,10 @@ class GradientSurface:
             alpha=np.minimum(alpha.reshape(height,width),mask).astype(np.uint8)
             rgba=np.concatenate([rgb.reshape(height,width,3).astype(np.uint8),alpha[:,:,None]],axis=2)
             data=io.BytesIO();Image.fromarray(rgba).save(data,format='PNG')
-            frames.append({'bounds':list(bounds),'image':'data:image/png;base64,'+base64.b64encode(data.getvalue()).decode(),'supportedPixels':int((alpha>0).sum())})
+            frames.append({'bounds':list(bounds),'image':'data:image/png;base64,'+base64.b64encode(data.getvalue()).decode(),'supportedPixels':int((alpha>0).sum()),
+                           'width':width,'height':height,
+                           'pixelSizeKmAtCenter':[(e-w)*111.195*math.cos(math.radians((n+s)/2))/width,(n-s)*111.195/height]})
         return {'frames':frames,'method':METHOD,'radiusKm':RADIUS_KM,'bandwidthKm':BANDWIDTH_KM,
                 'kind':'model','uncertainty':None,'waterMask':'Natural Earth 1:10m with conservative raster edge buffer',
-                'note':'Colors blend between SPI anchors. Click for exact density and classification. Transparent beyond support or on land.'}
+                'colorScale':self.color_scale,
+                'note':'Continuous blue-to-red concentration scale. SPI classification remains available in tile details. Transparent beyond support or on land.'}

@@ -1,0 +1,5 @@
+{
+  "source": "User-supplied shore-cleaner.html",
+  "sha256": "5514079b24267801c4d994cbbb17eb3daca3c4842ef98865762fc91fd851415c",
+  "integration": "Native scoped arcade module; original beach drawing/gameplay retained, cloud/admin entry points removed and lifecycle/persistence hooks added."
+}

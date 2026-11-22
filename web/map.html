@@ -13,9 +13,9 @@
         <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3 35 9v11c0 9-15 17-15 17S5 29 5 20V9Z"/><path class="wave" d="M8 20c6-7 12 7 18 0 2-2 4-2 7-1M9 26c6-7 12 7 18 0"/></svg>
         <span>Marine<strong>GUARDer</strong></span>
       </a>
-      <nav class="map-navigation" aria-label="Main navigation"><a href="/#home">Home</a><a href="/#cases">Field cases</a><a href="/#daily">Daily puzzle</a><a href="/#play">Practice</a><a href="/#collection">Collection</a><a href="/map.html" aria-current="page">Ocean map</a><a href="/globe.html">Conservation globe</a></nav>
     </header>
-    <main>
+    <div class="explorer-toolbar"><div id="explorer-switch"></div><p>One ocean. Two ways to explore.</p></div>
+    <main id="pollution-view">
       <aside>
         <div class="intro"><h1>Ocean pollution, in perspective.</h1><p>Explore observations. Understand what we know, and where we need to look.</p></div>
         <section class="location-panel">
@@ -27,8 +27,8 @@
           <button id="random-area" class="primary" disabled><span aria-hidden="true">↻</span> Random area</button>
         </section>
         <section class="layer-panel">
-          <label class="switch-row" for="heatmap-toggle"><span><strong>Sea Pollution Index</strong><small>Show water-clipped density estimates</small></span><input id="heatmap-toggle" type="checkbox" role="switch" checked /><span class="switch" aria-hidden="true"></span></label>
-          <label class="range-label" for="map-style">Pollution view</label><select id="map-style"><option value="gradient">Smooth gradient estimate</option><option value="tiles">Source-supported survey tiles</option></select>
+          <label class="switch-row" for="heatmap-toggle"><span><strong>Ocean concentration layer</strong><small>Show water-clipped density estimates</small></span><input id="heatmap-toggle" type="checkbox" role="switch" checked /><span class="switch" aria-hidden="true"></span></label>
+          <label class="range-label" for="map-style">Pollution view</label><select id="map-style"><option value="gradient">Continuous concentration gradient</option><option value="tiles">SPI classification tiles</option></select>
           <p class="layer-note" id="gradient-status" role="status">Gradient mode blends source values within 75 km. It is an unvalidated visual estimate, not measured coverage.</p>
           <label class="switch-row secondary-switch" for="protected-toggle"><span><strong>Protected areas</strong><small>Protected Planet marine boundaries</small></span><input id="protected-toggle" type="checkbox" role="switch" /><span class="switch" aria-hidden="true"></span></label>
           <p class="layer-note" id="resolution">Grid adapts to your zoom level.</p>
@@ -45,9 +45,13 @@
         <div class="key-notice" id="key-notice" hidden><strong>Natural Earth overview</strong><p>Land, ocean and place labels are available without a key. This historical cartographic background becomes less detailed as you zoom in.</p><details><summary>Connect detailed Google imagery</summary><p>Copy <code>web/.env.example</code> to <code>web/.env.local</code>, set <code>VITE_GOOGLE_MAPS_API_KEY</code>, and restart the local server.</p></details><p><a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener noreferrer">Basemap: Natural Earth</a></p></div>
         <div class="map-empty" id="map-empty" hidden>No compatible density observations in this view. Transparent water means insufficient data.</div>
         <div class="tile-info" id="tile-info" hidden aria-live="polite"></div>
-        <div class="legend" id="legend"><strong>Sea Pollution Index</strong><span class="legend-unit">Floating pieces / km²</span><div class="legend-gradient"></div><div id="spi-bands"></div><div class="unknown-key"><i></i><span>Transparent: insufficient support</span></div><small>Colors blend between thresholds.<br/>Click for exact class and source dates.</small></div>
+        <div class="legend" id="legend"><strong id="legend-title">Particle concentration</strong><span class="legend-unit" id="legend-unit">Floating pieces / km²</span><div class="legend-gradient" id="legend-gradient"></div><span class="density-scale-labels" id="density-scale-labels"></span><div id="spi-bands"></div><div class="unknown-key"><i></i><span>Transparent: insufficient support</span></div><small id="legend-note">Continuous concentration colors; exact class and source dates are in tile details.</small></div>
       </section>
     </main>
+    <section id="conservation-view" hidden></section>
+    <div class="bottom-bar">
+      <nav aria-label="Main navigation"><a href="/#home">Home</a><a href="/#cases">Field cases</a><a href="/#daily">Daily puzzle</a><a href="/#play">Arcade</a><a href="/#collection">Collection</a><a href="/map.html" aria-current="page">Ocean explorer</a></nav>
+    </div>
     <script type="module" src="/src/explorer.js"></script>
   </body>
 </html>

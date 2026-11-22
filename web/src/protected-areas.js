@@ -1,7 +1,10 @@
 export const PROTECTED_AREAS_SOURCE_URL = 'https://www.protectedplanet.net/en';
 export const PROTECTED_AREAS_SERVICE = 'https://data-gis.unep-wcmc.org/server/rest/services/ProtectedSites/WDPA_Marine_and_Coastal/FeatureServer/1';
 const MAX_FEATURES = 200;
-const FIELDS = 'objectid,site_id,site_pid,name_eng,name,desig_eng,desig,status,site_type,realm';
+// Field names and km² units come from this polygon layer's live metadata.
+const FIELDS = 'objectid,site_id,site_pid,name_eng,name,desig_eng,desig,status,site_type,realm,iucn_cat,status_yr,rep_area,rep_m_area,gov_type,mang_auth,no_take,no_tk_area,iso3,prnt_iso3';
+const sourceText = value => typeof value === 'string' && value.trim() ? value.trim() : null;
+const sourceArea = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
 
 export class ProtectedAreasError extends Error {
   constructor(message, code, cause) {
@@ -92,6 +95,12 @@ export async function queryProtectedAreas(bounds, {signal, maxFeatures = MAX_FEA
           ? `https://www.protectedplanet.net/${p.site_id}` : PROTECTED_AREAS_SOURCE_URL,
         designation: p.desig_eng || p.desig || null,
         status: p.status || null, kind: 'Protected area', realm: p.realm,
+        iucnCategory: sourceText(p.iucn_cat),
+        statusYear: Number.isInteger(p.status_yr) && p.status_yr > 0 ? p.status_yr : null,
+        reportedAreaKm2: sourceArea(p.rep_area), reportedMarineAreaKm2: sourceArea(p.rep_m_area),
+        governance: sourceText(p.gov_type), managementAuthority: sourceText(p.mang_auth),
+        noTake: sourceText(p.no_take), noTakeAreaKm2: sourceArea(p.no_tk_area),
+        countryCodes: sourceText(p.iso3), parentCountryCodes: sourceText(p.prnt_iso3),
       },
     });
   }

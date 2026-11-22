@@ -63,7 +63,7 @@ test('real-photo case flow, daily cap, navigation and earned cosmetic purchase w
   try{
     await import('../src/app.js');
     assert.match(window.document.querySelector('h1').textContent,/Find what/);
-    assert.equal(window.document.querySelector('a[href="/map.html"]').textContent,'Ocean map');
+    assert.equal(window.document.querySelector('a[href="/map.html"]').textContent,'Ocean explorer');
     await go('#case/random-beginner');await finishCurrentCase(true);
     assert.equal(window.document.getElementById('wallet-balance').textContent,'20');
     const saved=JSON.parse(window.localStorage.getItem('marineguarder.progress.v1'));
@@ -78,6 +78,8 @@ test('real-photo case flow, daily cap, navigation and earned cosmetic purchase w
     assert.equal(window.document.getElementById('wallet-balance').textContent,'0');
     assert.equal(window.document.documentElement.style.getPropertyValue('--personal-accent'),'#246cda');
     await go('#play');
+    assert.equal(window.document.querySelector('a[href="#shore-cleaner"]').textContent,'Play Shore Cleaner');
+    assert.equal(window.document.querySelector('a[data-nav="play"]').textContent,'Arcade');
     assert.doesNotMatch(window.document.getElementById('main-content').textContent,/Size detective|Follow the food web/);
     assert.match(window.document.getElementById('main-content').textContent,/Random field case/);
   } finally{

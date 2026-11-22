@@ -1,6 +1,4 @@
-import {mountGlobeExplorer} from './globe-explorer.js';
-import './app.css';
-import './globe.css';
-
-const explorer=mountGlobeExplorer(document.getElementById('globe-content'));
-window.addEventListener('pagehide',()=>explorer.destroy(),{once:true});
+// Preserve old globe bookmarks while all explorer views now share one page.
+const destination=new URL('/map.html',window.location.origin);
+destination.search=window.location.search;destination.searchParams.set('view','globe');
+window.location.replace(destination.href);

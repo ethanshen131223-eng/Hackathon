@@ -78,3 +78,42 @@ test('keyboard globe controls and reset change the view without moving focus int
     f.root.querySelector('#reset-globe').click();assert.equal(f.frames.at(-1).view.longitude,-90);
   } finally {f.controller.destroy();f.window.close();}
 });
+
+test('selected area shows safe, labeled source details and explicit unknown fields',async()=>{
+  const feature=area('1','<img src=x onerror=alert(1)> sanctuary');
+  Object.assign(feature.properties,{iucnCategory:'III',statusYear:2005,reportedAreaKm2:1527.97454488,
+    reportedMarineAreaKm2:294.76,governance:'Non-profit organisations',managementAuthority:'CONAP',
+    noTake:'Not Reported',noTakeAreaKm2:0,countryCodes:'GTM',parentCountryCodes:'GTM'});
+  const f=fixture({query:async()=>collection([feature])});
+  try{
+    await f.controller.ready;f.root.querySelector('.conservation-result').click();
+    const details=f.root.querySelector('#area-details');
+    const rows=Object.fromEntries([...details.querySelectorAll('dt')].map(dt=>[dt.textContent,dt.nextElementSibling.textContent]));
+    assert.equal(rows['IUCN management category'],'III');assert.equal(rows['Status year'],'2005');
+    assert.equal(rows['Reported area'],'1,527.975 km²');assert.equal(rows['Reported marine area'],'294.76 km²');
+    assert.equal(rows.Governance,'Non-profit organisations');assert.equal(rows['Management authority'],'CONAP');
+    assert.match(rows['No-take coverage'],/not reported/i);assert.match(rows['Reported no-take area'],/not reported/i);
+    assert.equal(rows['Country / territory codes'],'GTM');assert.equal(rows['Parent country codes'],'GTM');
+    assert.equal(details.querySelector('img'),null);assert.match(details.textContent,/<img src=x/);
+    f.handlers.onSelect(area('2','Unknown reserve'));
+    assert.match(details.textContent,/Not reported by source/);
+    assert.equal(details.querySelectorAll('dd').length,13);
+  }finally{f.controller.destroy();f.window.close();}
+});
+
+test('animated camera frames preserve selection and do not trigger replacement queries',async()=>{
+  const f=fixture();
+  try{
+    await f.controller.ready;f.root.querySelector('.conservation-result').click();
+    assert.equal(f.frames.at(-1).animate,true);
+    for(const longitude of [30,60,90])f.handlers.onViewChange({longitude,latitude:11,zoom:2},{inTransition:true});
+    await delay(15);
+    assert.equal(f.calls.length,1);assert.equal(f.root.querySelectorAll('.conservation-result').length,2);
+    assert.match(f.root.querySelector('#area-details').textContent,/Island reserve/);
+    assert.equal(f.root.querySelector('#globe-region').value,'galapagos');
+    f.handlers.onViewChange({longitude:120,latitude:11,zoom:2},{isDragging:true});
+    assert.equal(f.frames.at(-1).animate,false);
+    assert.equal(f.root.querySelector('#globe-region').value,'custom');
+    await delay(15);assert.equal(f.calls.length,2);
+  }finally{f.controller.destroy();f.window.close();}
+});

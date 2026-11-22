@@ -97,3 +97,34 @@ test('globe requests use bounded generalized display geometry without changing m
   const result=await queryProtectedAreas([-89,14,-87,17],{maxFeatures:80,generalizationDegrees:.03});
   assert.equal(result.maxFeatures,80);assert.equal(result.geometryGeneralizationDegrees,.03);assert.equal(result.truncated,true);
 });
+
+test('site details preserve official reported fields without substituting GIS measurements',async t=>{
+  const details={...marineArea,properties:{...marineArea.properties,iucn_cat:'III',status_yr:2005,
+    rep_area:1527.97454488,rep_m_area:294.76,gis_area:1700,gis_m_area:340,
+    gov_type:'Non-profit organisations',mang_auth:'CONAP',no_take:'Part',no_tk_area:25,
+    iso3:'GTM',prnt_iso3:'GTM'}};
+  t.mock.method(globalThis,'fetch',async input=>{
+    const url=new URL(input);if(!url.pathname.endsWith('/query'))return json(metadata);
+    const fields=url.searchParams.get('outFields').split(',');
+    for(const field of ['iucn_cat','status_yr','rep_area','rep_m_area','gov_type','mang_auth','no_take','no_tk_area','iso3','prnt_iso3'])assert.ok(fields.includes(field),`Request must include ${field}`);
+    return json({type:'FeatureCollection',features:[details]});
+  });
+  const p=(await queryProtectedAreas([-89,14,-87,17])).features[0].properties;
+  assert.equal(p.iucnCategory,'III');assert.equal(p.statusYear,2005);
+  assert.equal(p.reportedAreaKm2,1527.97454488);assert.equal(p.reportedMarineAreaKm2,294.76);
+  assert.equal(p.governance,'Non-profit organisations');assert.equal(p.managementAuthority,'CONAP');
+  assert.equal(p.noTake,'Part');assert.equal(p.noTakeAreaKm2,25);
+  assert.equal(p.countryCodes,'GTM');assert.equal(p.parentCountryCodes,'GTM');
+});
+
+test('missing or invalid source details stay unknown while a reported zero is retained',async t=>{
+  const details={...marineArea,properties:{...marineArea.properties,iucn_cat:'Not Reported',status_yr:0,
+    rep_area:null,rep_m_area:0,gov_type:'',mang_auth:null,no_take:'Not Reported',no_tk_area:-1,iso3:null}};
+  t.mock.method(globalThis,'fetch',async input=>new URL(input).pathname.endsWith('/query')
+    ?json({type:'FeatureCollection',features:[details]}):json(metadata));
+  const p=(await queryProtectedAreas([-89,14,-87,17])).features[0].properties;
+  assert.equal(p.statusYear,null);assert.equal(p.reportedAreaKm2,null);
+  assert.equal(p.reportedMarineAreaKm2,0);assert.equal(p.noTakeAreaKm2,null);
+  assert.equal(p.governance,null);assert.equal(p.managementAuthority,null);assert.equal(p.countryCodes,null);
+  assert.equal(p.iucnCategory,'Not Reported');assert.equal(p.noTake,'Not Reported');
+});

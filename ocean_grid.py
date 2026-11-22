@@ -334,6 +334,7 @@ class OceanGrid:
             "coverageFraction": min(1.0, data_area / water.area),
             "observationDates": sorted({str(o["observedAt"]) for o in samples if o.get("observedAt")}),
             "observationCount": len(samples),
+            "observationIds": sorted({str(o["id"]) for o in samples if o.get("id") is not None}),
             "availableObservationCount": sum(len(self.cells[key]) for key in base_keys),
             "baseCellCount": len(supported),
             "kind": "model",
@@ -382,7 +383,9 @@ class OceanGrid:
                     "rejectedObservationCount": self.rejected_count,
                 }}
 
-    def areas(self, limit=12):
+    def areas(self, limit=None):
+        if limit is not None and (not isinstance(limit, int) or limit < 1):
+            raise ValueError("Area limit must be positive or None")
         groups = defaultdict(list)
         for observation in self.selected:
             groups[(math.floor(observation["longitude"] / 5), math.floor(observation["latitude"] / 5))].append(observation)
@@ -394,13 +397,24 @@ class OceanGrid:
             longitudes = [o["longitude"] for o in observations]
             latitudes = [o["latitude"] for o in observations]
             center = [sum(longitudes) / len(longitudes), sum(latitudes) / len(latitudes)]
-            padding = 0.04
-            bounds = [max(-180, min(longitudes) - padding), max(-90, min(latitudes) - padding),
-                      min(180, max(longitudes) + padding), min(90, max(latitudes) + padding)]
+            # Include the existing bounded 75 km visual support, not unsampled
+            # ocean beyond the interpolation method's fixed support radius.
+            latitude_padding = 75 / 111.195
+            extreme_latitude = min(90, max(abs(min(latitudes)), abs(max(latitudes))) + latitude_padding)
+            longitude_padding = min(180, latitude_padding / max(.0001, math.cos(math.radians(extreme_latitude))))
+            raw_west, raw_east = min(longitudes) - longitude_padding, max(longitudes) + longitude_padding
+            if raw_east - raw_west >= 360:
+                west, east = -180, 180
+            else:
+                west, east = (raw_west + 180) % 360 - 180, (raw_east + 180) % 360 - 180
+            bounds = [west, max(-90, min(latitudes) - latitude_padding), east, min(90, max(latitudes) + latitude_padding)]
             areas.append({"id": f"observations:{x}:{y}",
                           "name": f"Observed waters {abs(center[1]):.2f}°{'N' if center[1] >= 0 else 'S'}, {abs(center[0]):.2f}°{'E' if center[0] >= 0 else 'W'}",
                           "center": center, "bounds": bounds,
                           "dates": sorted({str(o["observedAt"]) for o in observations if o.get("observedAt")}),
                           "observationCount": len(observations),
                           "maxDensityPiecesKm2": max(o["densityPiecesKm2"] for o in observations)})
-        return {"areas": areas, "source": self.source}
+        return {"areas": areas, "source": self.source, "metadata": {
+            "totalAreaCount": len(ranked), "returnedAreaCount": len(areas),
+            "limited": limit is not None and len(ranked) > limit,
+            "selectedObservationCount": len(self.selected), "supportRadiusKm": 75}}

@@ -1,0 +1,9 @@
+# Global ocean concentration coverage
+
+The hosted map previously exported only the twelve most populated observation clusters. All 267 source-supported clusters are now exported, including Arctic, Baltic, Indian, Mediterranean, North/South Atlantic, North/South Pacific and Southeast Asian provider regions.
+
+The underlying numerical data remain the documented Oceaneye surface micro-/mesoplastic concentration export. These are historical observations, with model-assisted source values labeled in the existing provenance, not a current all-debris or satellite survey. Reusing this compatible source avoids combining incompatible mesh sizes, sampling depths, or volumetric units. NOAA NCEI's [Marine Microplastics product page](https://www.ncei.noaa.gov/products/microplastics) describes additional global records but cautions that sampling/reporting methods can make cross-study concentrations incomparable. The [Oceaneye map page](https://www.oceaneye.ch/en/cartographie/) links the provider dataset and methodology.
+
+Coverage audit: 1,232 marine input records; nine mapped to land are excluded; 1,223 accepted observations; latest-date-per-compatible-cell selection retains 1,222 records; all 1,222 selected identifiers are represented in hosted 1 km² supported-water cells, with no uncovered selected identifiers. This does not establish measured coverage of each cell. Tile geometry retains actual water clipping, dates, source URLs, absent uncertainty, and the existing support/selection descriptions.
+
+Region bounds include the unchanged 75 km visual-support radius and handle wrapped longitudes. Regional fields target approximately 1 km raster spacing, bounded to 900×768 pixels. A 1,536×768 world overview supports distant zoom levels. This is display resolution, not measurement precision. The continuous square-root color scale is separate from the unchanged fixed SPI categories; no missing-water zero values are introduced.

@@ -24,7 +24,7 @@ from ocean_gradient import GradientSurface
 from ocean_grid import DEFAULT_COASTLINE, DEFAULT_OBSERVATIONS, LandMask, OceanGrid
 from practice_cases import CATALOG, FmlCases
 
-SNAPSHOT_ZOOM = 8
+SNAPSHOT_ZOOM = 13
 SNAPSHOT_NOTE = (
     "Precomputed snapshot exported from published historical observations; not a "
     "live feed or complete pollution coverage. Tile geometry represents supported "
@@ -96,12 +96,12 @@ def export_cases(catalog_path, photo_cache, output, exported_at):
             "caseJsonBytes": size, "photoBytes": sum(photo["bytes"] for photo in photos)}
 
 
-def export_pollution(observations_path, coastline_path, output, exported_at, area_limit=12, max_snapshot_mb=15):
+def export_pollution(observations_path, coastline_path, output, exported_at, area_limit=None, max_snapshot_mb=20):
     content = observations_path.read_bytes()
     document = json.loads(content)
     if not isinstance(document.get("observations"), list) or not isinstance(document.get("source"), dict):
         raise ValueError("Pollution input requires a source object and observations array")
-    grid = OceanGrid(document["observations"], LandMask.from_file(coastline_path), source=document["source"], max_features=1200)
+    grid = OceanGrid(document["observations"], LandMask.from_file(coastline_path), source=document["source"], max_features=10000)
     areas = grid.areas(limit=area_limit)
     source = {**grid.source, "precomputedSnapshot": True, "exportedAt": exported_at,
               "snapshotNote": SNAPSHOT_NOTE, "observationFileSha256": hashlib.sha256(content).hexdigest()}
@@ -114,12 +114,30 @@ def export_pollution(observations_path, coastline_path, output, exported_at, are
         tiles["source"] = source
         tiles["metadata"].update({"precomputedSnapshot": True, "exportedAt": exported_at,
                                   "snapshotZoom": SNAPSHOT_ZOOM, "snapshotNote": SNAPSHOT_NOTE})
-        gradient = surface.render(west, south, east, north)
+        span = (east - west) % 360 or 360
+        # Approximately 1 km raster pixels, bounded to keep exports practical.
+        width = max(128, min(900, math.ceil(span * 111.195 * max(.05, math.cos(math.radians((south+north)/2))))))
+        height = max(128, min(768, math.ceil((north-south)*111.195)))
+        gradient = surface.render(west, south, east, north, width=width, height=height)
         gradient.update({"precomputedSnapshot": True, "exportedAt": exported_at, "snapshotNote": SNAPSHOT_NOTE})
         snapshots.append({"areaId": area["id"], "bounds": area["bounds"], "tiles": tiles, "gradient": gradient})
         print(f"Prepared pollution snapshot {index}/{len(areas['areas'])}: {len(tiles['features'])} tiles", flush=True)
-    snapshots_document = {"source": source, "areas": areas["areas"], "snapshots": snapshots,
+    selected_ids = {str(observation["id"]) for observation in grid.selected if observation.get("id") is not None}
+    represented_ids = {identifier for snapshot in snapshots for feature in snapshot["tiles"]["features"]
+                       for identifier in feature["properties"]["observationIds"]}
+    coverage = {"sourceObservationCount": len(document["observations"]), "acceptedObservationCount": len(grid.accepted),
+                "selectedObservationCount": len(grid.selected), "representedObservationCount": len(selected_ids & represented_ids),
+                "uncoveredObservationIds": sorted(selected_ids - represented_ids), "rejectedObservationCount": grid.rejected_count,
+                "areaCount": len(snapshots), "totalAreaCount": areas["metadata"]["totalAreaCount"],
+                "sourceRegions": sorted({str(observation.get("region", "Not supplied")) for observation in grid.selected})}
+    # One coarse field at world scale avoids hundreds of simultaneous bitmap
+    # layers. Regional views retain the finer source-supported fields above.
+    overview = surface.render(-180, -85.0511, 180, 85.0511, width=1536, height=768)
+    overview.update({"precomputedSnapshot": True, "exportedAt": exported_at, "snapshotNote": SNAPSHOT_NOTE})
+    snapshots_document = {"source": source, "areas": areas["areas"], "snapshots": snapshots, "coverage": coverage,
+                          "overviewGradient": overview, "resolutionKm2": 1,
                           "precomputedSnapshot": True, "exportedAt": exported_at, "snapshotZoom": SNAPSHOT_ZOOM}
+    areas_document.update({"coverage": coverage, "snapshotZoom": SNAPSHOT_ZOOM, "resolutionKm2": 1})
     encoded = json_bytes(snapshots_document)
     if len(encoded) > max_snapshot_mb * 1024 * 1024:
         raise ValueError(f"Pollution snapshots exceed the {max_snapshot_mb} MiB budget ({len(encoded)} bytes)")
@@ -138,17 +156,19 @@ def main():
     parser.add_argument("--photo-cache", type=Path, default=ROOT / "data_sources/fml-photos")
     parser.add_argument("--observations", type=Path, default=DEFAULT_OBSERVATIONS)
     parser.add_argument("--coastline", type=Path, default=DEFAULT_COASTLINE)
-    parser.add_argument("--area-limit", type=int, default=12)
-    parser.add_argument("--max-snapshot-mb", type=float, default=15)
+    parser.add_argument("--area-limit", type=int, default=None)
+    parser.add_argument("--max-snapshot-mb", type=float, default=20)
     parser.add_argument("--exported-at", help="Fixed ISO timestamp for reproducible snapshot metadata")
+    parser.add_argument("--pollution-only", action="store_true", help="Refresh ocean snapshots without rewriting the cached game photos")
     args = parser.parse_args()
-    if not 1 <= args.area_limit <= 12 or not math.isfinite(args.max_snapshot_mb) or args.max_snapshot_mb <= 0:
-        parser.error("area-limit must be 1–12 and max-snapshot-mb must be positive")
+    if (args.area_limit is not None and args.area_limit < 1) or not math.isfinite(args.max_snapshot_mb) or args.max_snapshot_mb <= 0:
+        parser.error("area-limit must be positive when supplied and max-snapshot-mb must be positive")
     exported_at = args.exported_at or datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     datetime.fromisoformat(exported_at.replace("Z", "+00:00"))
     args.output.mkdir(parents=True, exist_ok=True)
-    cases = export_cases(args.catalog, args.photo_cache, args.output, exported_at)
-    print(f"Prepared {cases['caseCount']} cached FML cases", flush=True)
+    cases = {} if args.pollution_only else export_cases(args.catalog, args.photo_cache, args.output, exported_at)
+    if cases:
+        print(f"Prepared {cases['caseCount']} cached FML cases", flush=True)
     pollution = export_pollution(args.observations, args.coastline, args.output, exported_at,
                                  args.area_limit, args.max_snapshot_mb)
     print(json.dumps({"output": str(args.output.resolve()), "exportedAt": exported_at, **cases, **pollution}), flush=True)

@@ -44,3 +44,32 @@ def test_incompatible_particle_scopes_cannot_be_silently_blended():
     second={**observation(1,1),'materialScope':'different particle-size range'}
     with pytest.raises(ValueError,match='compatible'):
         GradientSurface([observation(),second],LandMask([]))
+
+
+def test_requested_fine_raster_dimensions_are_retained_and_reported():
+    frame = GradientSurface([observation()], LandMask([])).render(
+        -.8, -.8, .8, .8, width=900, height=720)['frames'][0]
+    image = Image.open(io.BytesIO(base64.b64decode(frame['image'].split(',')[1])))
+    assert image.size == (900, 720)
+    assert frame['width'] == 900 and frame['height'] == 720
+    # A 1.6-degree equatorial extent is about 178 km across.
+    assert .19 < frame['pixelSizeKmAtCenter'][0] < .21
+    assert .24 < frame['pixelSizeKmAtCenter'][1] < .26
+    assert image.getpixel((450, 360))[3] > 0
+    assert image.getpixel((0, 0))[3] == 0
+
+
+def test_continuous_blue_to_red_scale_has_intermediate_colors_without_changing_density():
+    from ocean_gradient import density_colors
+    import numpy as np
+    colors = density_colors(np.array([0, 100, 400, 900, 1600]), 1600)
+    assert colors.shape == (5, 3)
+    assert len({tuple(color) for color in colors}) == 5
+    assert colors[0, 2] > colors[0, 0]  # Low endpoint is blue.
+    assert colors[-1, 0] > colors[-1, 2]  # High endpoint is red.
+    model = GradientSurface([observation(density=120)], LandMask([]))
+    assert model.estimate(0, 0)['densityPiecesKm2'] == 120
+    scale = model.render(-.1, -.1, .1, .1, width=32, height=32)['colorScale']
+    assert scale['transform'] == 'sqrt'
+    assert scale['minimum'] == 0
+    assert scale['maximum'] > 0

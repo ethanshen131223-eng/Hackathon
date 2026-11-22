@@ -4,12 +4,14 @@ import {
 } from './local-cases.js';
 import {containsPoint,outlineBounds,matchOutline} from './outlines.js';
 import {mountOutlineTools} from './outline-tools.js';
+import {detectPhotoTrash} from './photo-ai.js';
 
 const CATEGORIES = [
   ['uncertain', 'Uncertain / possible debris'], ['fragment', 'Fragment'], ['film', 'Film / sheet'],
   ['fiber', 'Fiber / line'], ['pellet', 'Pellet'], ['foam', 'Foam'], ['other', 'Other'],
 ];
 const MAX_FILE_SIZE = 12 * 1024 * 1024;
+const analysisHint = 'OWL-ViT suggests visible litter such as bottles, wrappers, and cans. The first run downloads about 160 MB. Analysis runs on this device.';
 
 export function validateImageFile(file) {
   if (!file || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
@@ -115,6 +117,9 @@ async function mountEditor(container, {creator, onSaved, notify}) {
   let testing = false;
   let busy = false;
   let photoReady = false;
+  let suggestions = [];
+  let analyzing = false;
+  let analysisVersion = 0;
   let found = new Set();
   let testPointFound = new Set();
   let testOutlines = [];
@@ -126,7 +131,7 @@ async function mountEditor(container, {creator, onSaved, notify}) {
   const heading = element('div', 'workbench-heading');
   heading.append(element('h2', '', creator ? 'Make a field puzzle' : 'Investigate your photo'),
     element('p', 'muted', creator ? 'Choose a photo, write clues, and mark your answer key. Test it before saving.' :
-      'Mark possible debris and record what you can observe. Every finding is a manual annotation.'));
+      'Look for possible debris with AI or mark it yourself. Review the photo before recording findings.'));
   const privacy = element('p', 'notice', 'Your photo stays on this device. Nothing is uploaded. Saved previews are resized to at most 1,400 pixels on their longest side.');
   const storageNotice = element('p', 'muted');
   storageNotice.setAttribute('role', 'status');
@@ -182,6 +187,11 @@ async function mountEditor(container, {creator, onSaved, notify}) {
   imageWrap.append(stage);
   imageWrap.hidden = true;
   const imageActions = element('div', 'button-row');
+  const analyzeButton = creator ? null : button('Identify possible trash', analyzePhoto, true);
+  const aiStatus = element('p', 'muted');
+  aiStatus.setAttribute('role', 'status');
+  const aiResults = element('ol', 'photo-ai-results');
+  if (analyzeButton) imageActions.append(analyzeButton);
   const addButton = button(`Add ${noun} at center`, () => addItem({x: 0.5, y: 0.5}));
   const testButton = creator ? button('Test puzzle', () => toggleTest()) : null;
   imageActions.append(addButton);
@@ -222,7 +232,12 @@ async function mountEditor(container, {creator, onSaved, notify}) {
   testFeedback.hidden = true;
   const clueList = element('ol', 'finding-list');
   clueList.hidden = true;
-  imagePanel.append(empty, drawing.toolbar, imageWrap, imageActions, imageHelp, testControls, testFeedback, clueList);
+  imagePanel.append(empty, drawing.toolbar, imageWrap, imageActions);
+  if (analyzeButton) {
+    aiStatus.textContent = analysisHint;
+    imagePanel.append(aiStatus, aiResults);
+  }
+  imagePanel.append(imageHelp, testControls, testFeedback, clueList);
 
   const detailPanel = element('div', 'panel workbench-details');
   detailPanel.append(element('h3', '', creator ? 'Your answer key' : 'Manual findings'));
@@ -250,6 +265,7 @@ async function mountEditor(container, {creator, onSaved, notify}) {
     const hasPhoto = Boolean(draft.imageDataUrl);
     drawing.setEnabled(hasPhoto && photoReady && !busy);
     addButton.disabled = !hasPhoto || testing || busy;
+    if (analyzeButton) analyzeButton.disabled = !hasPhoto || !photoReady || busy || analyzing;
     saveButton.disabled = !hasPhoto || testing || busy;
     exportButton.disabled = !hasPhoto || testing || busy;
     file.disabled = testing || busy;
@@ -283,6 +299,15 @@ async function mountEditor(container, {creator, onSaved, notify}) {
   }
   function renderMarkers() {
     overlay.replaceChildren();
+    suggestions.forEach(({box}, index) => {
+      const marker = element('span', 'photo-ai-box', String(index + 1));
+      marker.setAttribute('aria-hidden', 'true');
+      Object.assign(marker.style, {
+        left: `${box.xmin * 100}%`, top: `${box.ymin * 100}%`,
+        width: `${(box.xmax - box.xmin) * 100}%`, height: `${(box.ymax - box.ymin) * 100}%`,
+      });
+      overlay.append(marker);
+    });
     drawing.setOutlines(testing?testOutlines.map(outline=>({points:outline.points,state:outline.objectId?'correct':'unmatched'})):
       draft[key].filter(item=>item.outline).map(item=>({points:item.outline,state:item.id===selectedId?'is-selected':''})));
     draft[key].forEach((item, index) => {
@@ -400,7 +425,43 @@ async function mountEditor(container, {creator, onSaved, notify}) {
     renderEditor();renderMarkers();renderList();
     drawing.setStatus(all?`Outlined ${noun}s cleared. Point markers kept.`:`Last outlined ${noun} removed.`);
   }
+  async function analyzePhoto() {
+    if (!photoReady || busy || analyzing) return;
+    const version = ++analysisVersion;
+    const isCurrent = () => alive && analysisVersion === version;
+    analyzing = true;
+    suggestions = [];
+    aiResults.replaceChildren();
+    renderMarkers();
+    controls();
+    aiStatus.textContent = 'Preparing the detector. The first run downloads about 160 MB.';
+    try {
+      const results = await detectPhotoTrash(draft.imageDataUrl, () => {
+        if (isCurrent()) aiStatus.textContent = 'Scanning your photo on this device…';
+      });
+      if (!isCurrent()) return;
+      suggestions = results;
+      aiResults.replaceChildren(...results.map(({label, score}) =>
+        element('li', '', `${label} (${Math.round(score * 100)}% model score)`)));
+      aiStatus.textContent = results.length
+        ? 'Review the numbered AI suggestions. Use the drawing tools to record what you see.'
+        : 'The model found no likely matches. You can still inspect the photo and mark findings.';
+      renderMarkers();
+    } catch {
+      if (isCurrent()) aiStatus.textContent = 'The detector could not run. Check your connection and try again, or mark findings by hand.';
+    } finally {
+      if (isCurrent()) {
+        analyzing = false;
+        controls();
+      }
+    }
+  }
   function showPhoto() {
+    analysisVersion++;
+    analyzing = false;
+    suggestions = [];
+    aiResults.replaceChildren();
+    aiStatus.textContent = analysisHint;
     drawing.cancel();photoReady=false;
     photo.src = draft.imageDataUrl;
     const present = Boolean(draft.imageDataUrl);
