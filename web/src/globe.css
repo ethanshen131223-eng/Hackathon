@@ -38,7 +38,8 @@
 .conservation-result small { display:block; margin-top:4px; font-size:.75rem; color:#67818d; }
 .conservation-result[aria-pressed=true] { border-color:#27a698; background:#e5f7f1; }
 .globe-list-empty { font-size:.875rem; line-height:1.6; color:var(--muted); }
-.area-details { border-top:1px solid #d4e7e9; margin-top:24px; padding-top:20px; }
+.area-details { border-top:1px solid #d4e7e9; margin-top:16px; padding-top:14px; }
+.area-details .button { margin-top:12px; }
 .area-details h2 { font-size:1.2rem; margin:7px 0 12px; overflow-wrap:anywhere; }
 .area-details p,.area-details a { font-size:.875rem; line-height:1.6; }
 .area-source-label { font-size:.75rem; color:#568278; }

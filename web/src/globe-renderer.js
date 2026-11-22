@@ -1,6 +1,7 @@
 import {Deck,_GlobeView as GlobeView,LinearInterpolator,TRANSITION_EVENTS} from '@deck.gl/core';
 import {createGlobeLayers} from './globe-layers.js';
 import {normalizeGlobeView,GLOBE_REGIONS,wrapLongitude} from './globe-state.js';
+import {protectedAreaSummary} from './protected-area-details.js';
 
 class GlobeInterpolator extends LinearInterpolator {
   initializeProps(start,end){
@@ -37,7 +38,7 @@ export async function createGlobeRenderer({container,onViewChange,onSelect,onErr
         },
         onLoad:()=>{onReady?.();resolve();},
         onError:error=>{onError?.(error);reject(error);},
-        getTooltip:info=>info.object?{text:info.object.properties.name}:null,
+        getTooltip:info=>info.object?{text:`${info.object.properties.name}\n${protectedAreaSummary(info.object.properties)}`}:null,
         getCursor:({isDragging,isHovering})=>isDragging?'grabbing':isHovering?'pointer':'grab',
         layers:createGlobeLayers({onImageError:onError,places}),
       });

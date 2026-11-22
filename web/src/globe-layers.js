@@ -1,11 +1,15 @@
 import {BitmapLayer,GeoJsonLayer,TextLayer} from '@deck.gl/layers';
+import {featureFocus} from './globe-state.js';
+import {protectedAreaSummary} from './protected-area-details.js';
 
 export function createGlobeLayers({features=[],selectedId=null,protectedVisible=true,onSelect,onImageError,places=[],view={zoom:0}}={}) {
+  const selected = selectedId == null ? null : features.find(feature => feature.id === selectedId);
+  const position = selected ? featureFocus(selected) : null;
   return [
     new BitmapLayer({id:'earth-imagery',image:'/globe/earth-natural.jpg',bounds:[-180,-90,180,90],
       _imageCoordinateSystem:'lnglat',pickable:false,onError:onImageError}),
-    new GeoJsonLayer({id:'globe-protected',data:{type:'FeatureCollection',features},
-      visible:protectedVisible,pickable:true,filled:true,stroked:true,wrapLongitude:true,
+    new GeoJsonLayer({id:'globe-protected',data:{type:'FeatureCollection',features:protectedVisible?features:selected?[selected]:[]},
+      visible:protectedVisible||Boolean(selected),pickable:true,filled:true,stroked:true,wrapLongitude:true,
       getFillColor:feature=>feature.id===selectedId?[255,174,112,155]:[36,218,184,100],
       getLineColor:feature=>feature.id===selectedId?[255,209,153,255]:[111,255,218,240],
       lineWidthMinPixels:1.5,getLineWidth:1,autoHighlight:true,highlightColor:[255,238,169,160],
@@ -17,5 +21,12 @@ export function createGlobeLayers({features=[],selectedId=null,protectedVisible=
       getColor:place=>place.kind==='water'?[24,68,89,235]:[28,53,48,240],
       fontFamily:'Manrope, sans-serif',fontWeight:600,fontSettings:{sdf:true},outlineWidth:.15,outlineColor:[246,251,248,230],
       getTextAnchor:'middle',getAlignmentBaseline:'center',billboard:true,pickable:false}),
+    new TextLayer({id:'globe-protected-highlight-label',
+      data:position?[{position:[position.longitude,position.latitude,1500],
+        text:`${selected.properties.name}\n${protectedAreaSummary(selected.properties)}`}]:[],
+      getPosition:label=>label.position,getText:label=>label.text,getSize:14,
+      getColor:[255,255,255,255],background:true,getBackgroundColor:[18,56,77,240],
+      backgroundPadding:[8,5],getPixelOffset:[0,-18],getAlignmentBaseline:'bottom',
+      fontFamily:'Manrope, sans-serif',fontWeight:700,billboard:true,pickable:false}),
   ];
 }

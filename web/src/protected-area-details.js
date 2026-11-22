@@ -6,6 +6,15 @@ const area = value => typeof value !== 'number' || !Number.isFinite(value) || va
   ? UNKNOWN : value > 0 && value < .001 ? '<0.001 km²'
     : `${value.toLocaleString('en-CA', {maximumFractionDigits: 3})} km²`;
 
+export function protectedAreaSummary(properties = {}) {
+  const marineArea = properties.reportedMarineAreaKm2;
+  return [
+    unknown(properties.designation) ? null : properties.designation,
+    unknown(properties.status) ? null : [properties.status, properties.statusYear > 0 ? properties.statusYear : null].filter(Boolean).join(' '),
+    Number.isFinite(marineArea) && marineArea >= 0 ? `${area(marineArea)} marine` : null,
+  ].filter(Boolean).join(' · ') || 'Details unavailable from source';
+}
+
 /** Shared source record for the globe and ocean map; source strings are always text. */
 export function createProtectedAreaDetails(document, properties = {}) {
   const node = (tag, value, className = '') => {

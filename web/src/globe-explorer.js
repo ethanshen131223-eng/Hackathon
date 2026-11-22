@@ -1,11 +1,11 @@
 import {queryProtectedAreas,PROTECTED_AREAS_SOURCE_URL} from './protected-areas.js';
 import {GLOBE_REGIONS,normalizeGlobeView,globeQueryBounds,featureFocus,filterGlobeFeatures,coordinateLabel} from './globe-state.js';
-import {createProtectedAreaDetails} from './protected-area-details.js';
+import {createProtectedAreaDetails, protectedAreaSummary} from './protected-area-details.js';
 
 export function mountGlobeExplorer(container,{query=queryProtectedAreas,createRenderer,debounceMs=650,initialView}={}) {
   const document=container.ownerDocument;
   const events=new document.defaultView.AbortController(),eventOptions={signal:events.signal};
-  let alive=true,renderer=null,request=null,timer=null,generation=0,features=[],selectedId=null;
+  let alive=true,renderer=null,request=null,timer=null,generation=0,features=[],selectedFeature=null;
   let view=normalizeGlobeView(initialView??GLOBE_REGIONS[0]),protectedVisible=true,currentRegion=initialView?'custom':GLOBE_REGIONS[0].id;
   const el=(tag,className='',text='')=>{const node=document.createElement(tag);node.className=className;node.textContent=text;return node;};
   const sourceLink=(text,url)=>{
@@ -50,7 +50,7 @@ export function mountGlobeExplorer(container,{query=queryProtectedAreas,createRe
   const regionRow=el('div','region-row');regionRow.append(region,random);
   const toggleLabel=el('label','conservation-toggle'),toggle=el('input');toggle.id='conservation-toggle';toggle.type='checkbox';toggle.checked=true;
   toggle.addEventListener('change',()=>{protectedVisible=toggle.checked;updateRenderer();},eventOptions);
-  toggleLabel.append(toggle,el('span','','Show protected boundaries'));
+  toggleLabel.append(toggle,el('span','','Show other protected boundaries'));
   const status=el('p','globe-query-status');status.id='globe-status';status.setAttribute('role','status');
   const scope=el('p','globe-query-scope');scope.id='globe-query-scope';
   const retry=button('Refresh this area',()=>loadAreas(),'button button-secondary globe-refresh');retry.id='retry-conservation';
@@ -59,7 +59,7 @@ export function mountGlobeExplorer(container,{query=queryProtectedAreas,createRe
   filter.addEventListener('input',renderList,eventOptions);
   const listHeading=el('h2','globe-list-heading','Areas to explore'),results=el('div','conservation-results');results.id='conservation-results';
   const details=el('section','area-details');details.id='area-details';details.setAttribute('aria-label','Selected conservation area');
-  browser.append(regionLabel,regionRow,toggleLabel,status,scope,retry,filterLabel,filter,listHeading,results,details);
+  browser.append(regionLabel,regionRow,toggleLabel,details,status,scope,retry,filterLabel,filter,listHeading,results);
   workspace.append(visual,browser);
   const sources=el('section','globe-sources');
   const attribution=el('p');attribution.id='globe-attribution';
@@ -69,25 +69,35 @@ export function mountGlobeExplorer(container,{query=queryProtectedAreas,createRe
   sources.append(attribution,limitations,earthCredit);root.append(intro,workspace,sources);container.replaceChildren(root);
 
   function rotationStep(){return Math.max(1,12/2**Math.max(0,view.zoom-1));}
-  function updateRenderer(animate=false){coordinates.textContent=`Centered at ${coordinateLabel(view)}`;renderer?.update({view,features,selectedId,protectedVisible,animate});}
+  function updateRenderer(animate=false){
+    coordinates.textContent=`Centered at ${coordinateLabel(view)}`;
+    const selectedId=selectedFeature?.id ?? null;
+    const displayed=selectedFeature&&!features.some(feature=>feature.id===selectedId)?[selectedFeature,...features]:features;
+    renderer?.update({view,features:displayed,selectedId,protectedVisible,animate});
+  }
   function clearDetails(){details.replaceChildren(el('h2','','Choose a protected area'),el('p','','Select a shaded boundary or an area in the list to read its source details.'));}
   function renderList(){
     const focusedId=results.contains(document.activeElement)?document.activeElement.dataset.areaId:null;
     results.replaceChildren();const matches=filterGlobeFeatures(features,filter.value);
     listHeading.textContent=features.length?`Areas to explore (${matches.length} of ${features.length})`:'Areas to explore';
-    if(!matches.length)results.append(el('p','globe-list-empty',features.length?'No loaded names match. Try another name or clear the filter.':'No boundaries loaded. Choose a region or refresh the connection.'));
-    for(const feature of matches){
+    const pinned=selectedFeature?[selectedFeature,...matches.filter(feature=>feature.id!==selectedFeature.id)]:matches;
+    if(!pinned.length)results.append(el('p','globe-list-empty',features.length?'No loaded names match. Try another name or clear the filter.':'No boundaries loaded. Choose a region or refresh the connection.'));
+    for(const feature of pinned){
       const choice=button('',()=>selectFeature(feature),'conservation-result');
       choice.dataset.areaId=String(feature.id);
-      choice.setAttribute('aria-pressed',String(feature.id===selectedId));
-      choice.append(el('strong','',feature.properties.name),el('small','',feature.properties.designation??'Designation not supplied'));
+      choice.setAttribute('aria-pressed',String(feature.id===selectedFeature?.id));
+      choice.append(el('strong','',feature.properties.name),el('small','',protectedAreaSummary(feature.properties)));
       results.append(choice);
     }
     if(focusedId)[...results.children].find(node=>node.dataset.areaId===focusedId)?.focus({preventScroll:true});
   }
   function selectFeature(feature){
-    selectedId=feature.id;const focus=featureFocus(feature);if(focus)view=focus;
-    details.replaceChildren(createProtectedAreaDetails(document,feature.properties));
+    selectedFeature=feature;const focus=featureFocus(feature);if(focus)view=focus;
+    const clear=button('Clear highlight',()=>{
+      selectedFeature=null;clearDetails();renderList();updateRenderer();
+      results.querySelector('button')?.focus();
+    });
+    details.replaceChildren(createProtectedAreaDetails(document,feature.properties),clear);
     renderList();updateRenderer(true);
   }
   function move(patch,animate=true){
@@ -100,14 +110,13 @@ export function mountGlobeExplorer(container,{query=queryProtectedAreas,createRe
   }
   function invalidate(){generation++;request?.abort();clearTimeout(timer);timer=null;}
   function scheduleQuery(){
-    invalidate();features=[];selectedId=null;clearDetails();renderList();updateRenderer();
+    invalidate();
     status.textContent='Globe moved. Loading boundaries near the new center…';
     timer=setTimeout(()=>loadAreas(),debounceMs);
   }
   async function loadAreas(){
     if(!alive)return;invalidate();const ticket=generation;
     const controller=new AbortController();request=controller;
-    features=[];selectedId=null;renderList();clearDetails();updateRenderer();
     const bounds=globeQueryBounds(view),generalizationDegrees=view.zoom>=4?.003:.03;
     status.textContent='Loading marine and coastal boundaries…';results.setAttribute('aria-busy','true');
     scope.textContent=`Search extent: ${bounds.map(number=>number.toFixed(1)).join(', ')}° (west, south, east, north)${bounds[0]>bounds[2]?'; crosses the date line':''}.`;

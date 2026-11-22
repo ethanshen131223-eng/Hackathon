@@ -117,3 +117,20 @@ test('animated camera frames preserve selection and do not trigger replacement q
     await delay(15);assert.equal(f.calls.length,2);
   }finally{f.controller.destroy();f.window.close();}
 });
+
+test('a highlighted site and its summary stay pinned after a new region loads',async()=>{
+  let calls=0;
+  const first=area('1','Island reserve');
+  first.properties.reportedMarineAreaKm2=25;
+  const f=fixture({query:async()=>collection(++calls===1?[first]:[area('2','Another reserve')])});
+  try {
+    await f.controller.ready;
+    f.root.querySelector('.conservation-result').click();
+    f.handlers.onViewChange({longitude:120,latitude:11,zoom:2},{isDragging:true});
+    await delay(15);
+    assert.equal(f.frames.at(-1).selectedId,'1');
+    assert.deepEqual(f.frames.at(-1).features.map(feature=>feature.id),['1','2']);
+    assert.match(f.root.querySelector('.conservation-result').textContent,/Island reserve.*25 km² marine/);
+    assert.match(f.root.querySelector('#area-details').textContent,/Island reserve/);
+  } finally {f.controller.destroy();f.window.close();}
+});
