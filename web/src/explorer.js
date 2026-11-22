@@ -330,7 +330,7 @@ function selectArea(area) {
 function createPreview(message = 'Natural Earth map') {
   overlay?.finalize(); overlay = null; googleMap = null; mapLabel = message;
   if (preview) return;
-  $('map').replaceChildren(); $('key-notice').hidden = false; $('map-status').textContent = mapLabel;
+  $('map').replaceChildren(); $('map-status').textContent = mapLabel;
   const canvas = element('canvas'); $('map').append(canvas);
   state.view = {longitude: -30, latitude: 25, zoom: 2};
   try {
