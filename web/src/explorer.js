@@ -32,16 +32,27 @@ function sourceLink(label, url) {
   link.target = '_blank'; link.rel = 'noopener noreferrer'; return link;
 }
 
+let globalPlastic;
+const globalSource = 'https://doi.org/10.6084/m9.figshare.1613256';
+
 function renderLegend() {
   $('spi-bands').replaceChildren();
-  const continuous=$('map-style').value==='gradient',scale=state.gradient.colorScale;
+  const global = $('map-style').value === 'global';
+  const continuous = $('map-style').value !== 'tiles';
+  const scale = global ? globalPlastic?.colorScale : state.gradient.colorScale;
   $('legend-title').textContent=continuous?'Particle concentration':'Sea Pollution Index';
   $('legend-unit').textContent=continuous?'pieces / km² · square-root color scale':'Floating pieces / km²';
   $('density-scale-labels').hidden=!continuous;
   $('density-scale-labels').textContent=scale?`0   ·   ${Math.round(scale.maximum/4).toLocaleString()}   ·   ≥${Math.round(scale.maximum).toLocaleString()}`:'Loading concentration scale…';
-  $('legend-gradient').style.background=continuous?'linear-gradient(90deg,#307ed8,#4cb8d3,#eef1b2,#f59664,#d22f3e)':'linear-gradient(90deg,#307ed8,#369d5b,#f0d135,#ef8523,#d22f2f)';
+  const colors = scale?.colors?.map(color => `rgb(${color.join(',')})`).join(',') ||
+    '#193dd2,#00bdf1,#ffe72c,#ff7712,#cd002c';
+  $('legend-gradient').style.background = continuous ? `linear-gradient(90deg,${colors})` : 'linear-gradient(90deg,#307ed8,#369d5b,#f0d135,#ef8523,#d22f2f)';
   $('legend-note').textContent=continuous?'Blue: lower concentration; red: higher. Colors saturate at the source’s 95th percentile. Exact SPI class is in tile details.':'Fixed SPI classification thresholds. Unobserved water remains unknown.';
   $('spi-bands').hidden=continuous;
+  if (global) {
+    $('legend-title').textContent = 'Global model (2014)';
+    $('legend-note').textContent = 'Floating microplastic estimates from van Sebille et al. (2015). Native grid is 1°.';
+  }
   for (const band of SPI_BANDS) {
     const row = element('div', undefined, 'spi-band');
     const swatch = element('i'); swatch.style.background = `rgb(${band.color})`;
@@ -51,9 +62,13 @@ function renderLegend() {
 }
 
 function layers() {
+  const global = $('map-style').value === 'global';
+  const gradient = global ? {frames: globalPlastic ? [{
+    image: '/hosted/global-plastic-2014.png', bounds: globalPlastic.bounds,
+  }] : []} : state.gradient;
   return [...(!googleMap?createBasemapLayers({places:placeLabels,zoom:state.view?.zoom??2}):[]),...createMapLayers({tiles: state.tiles, protectedAreas: state.protected,
     spiVisible: $('heatmap-toggle').checked, protectedVisible: $('protected-toggle').checked,
-    onTileClick: showTile, onProtectedClick: showProtected,gradient:state.gradient,
+    onTileClick: showTile, onProtectedClick: showProtected,gradient,
     viewStyle:$('map-style').value,onGradientClick:showGradientEstimate})];
 }
 
@@ -152,6 +167,29 @@ async function requestGradient(bounds,zoom) {
 }
 
 async function showGradientEstimate(coordinates) {
+  if ($('map-style').value === 'global') {
+    if (!globalPlastic) return;
+    const {bounds, maskWidth, maskHeight, mask, values} = globalPlastic;
+    const [west, south, east, north] = bounds;
+    const lng = ((coordinates[0] + 180) % 360 + 360) % 360 - 180;
+    const lat = coordinates[1];
+    if (lat <= south || lat > north) return;
+    const x = Math.floor((lng - west) * maskWidth / (east - west));
+    const y = Math.floor((north - lat) * maskHeight / (north - south));
+    const index = y * maskWidth + x;
+    if (!(mask.charCodeAt(index >> 3) & (128 >> (index % 8)))) return;
+    const density = values[Math.floor(90 - lat + 0.5)][(Math.floor(lng + 0.5) + 360) % 360];
+    if (density == null) return;
+    const box = $('tile-info');
+    const close = element('button', 'Close details', 'text-button');
+    close.onclick = () => { box.hidden = true; };
+    box.replaceChildren(element('h2', 'Modeled surface microplastics'),
+      element('p', `${density.toLocaleString()} pieces/km²`, 'density-value'),
+      element('p', `2014 estimate at ${lat.toFixed(2)}°, ${lng.toFixed(2)}°. One-degree grid cell.`),
+      sourceLink('van Sebille et al. (2015) data · CC BY 4.0', globalSource), close);
+    box.hidden = false;
+    return;
+  }
   if(hostedMode){
     const tile=tileAtPoint(state.tiles,coordinates);
     if(tile){showTile(tile);$('tile-info').prepend(element('p','Source-supported snapshot tile at this point. The gradient is a separate smoothed visualization.','notice'));}
@@ -207,7 +245,14 @@ function scheduleViewport(view) {
   viewportTimer = setTimeout(() => {
     if (!state.view && !googleMap) return;
     const bounds = viewBounds(state.view), zoom = googleMap?.getZoom() ?? state.view.zoom;
-    requestViewportData(bounds, zoom, {requestTiles, requestProtected, protectedEnabled: $('protected-toggle').checked, requestGradient,gradientEnabled:$('map-style').value==='gradient'});
+    const style = $('map-style').value;
+    requestViewportData(bounds, zoom, {
+      requestTiles: style === 'global' ? () => {} : requestTiles,
+      requestProtected,
+      protectedEnabled: $('protected-toggle').checked,
+      requestGradient,
+      gradientEnabled: style === 'gradient',
+    });
   }, 180);
 }
 
@@ -318,7 +363,38 @@ async function start() {
 $('random-area').onclick = () => selectArea(chooseArea(state.areas, state.area?.id));
 $('area-select').onchange = event => selectArea(state.areas.find(area => area.id === event.target.value));
 $('heatmap-toggle').onchange = () => { refreshLayers(); $('tile-info').hidden = true; };
-$('map-style').onchange=()=>{gradientRequest?.abort();$('tile-info').hidden=true;refreshLayers();scheduleViewport(state.view);};
+$('map-style').onchange = async () => {
+  tilesRequest?.abort();
+  gradientRequest?.abort();
+  $('tile-info').hidden = true;
+  $('map-empty').hidden = true;
+  const global = $('map-style').value === 'global';
+  $('resolution').hidden = global;
+  $('detection-count').closest('.observation-panel').hidden = global;
+  refreshLayers();
+  if (global) {
+    $('map-status').textContent = 'Global modeled surface microplastics · 2014';
+    $('gradient-status').textContent = 'Loading the historical global model…';
+    try {
+      globalPlastic ??= await hostedDocument('global-plastic-2014');
+      globalPlastic.mask ??= atob(globalPlastic.supportMask);
+    } catch {
+      if ($('map-style').value === 'global') $('gradient-status').textContent = 'The global model could not load. Choose another view or try again.';
+      return;
+    }
+    if ($('map-style').value !== 'global') return;
+    $('gradient-status').replaceChildren(
+      document.createTextNode(`2014 modeled microplastics cover ${globalPlastic.waterCoverage}% of mapped ocean area. `),
+      sourceLink('Study data', globalSource));
+    state.view = {longitude: 0, latitude: 0, zoom: 1};
+    if (googleMap) { googleMap.setCenter({lng: 0, lat: 0}); googleMap.setZoom(1); }
+    preview?.setProps({initialViewState: state.view});
+    refreshLayers();
+  } else if ($('map-style').value === 'tiles') {
+    $('gradient-status').textContent = 'Select a survey tile to see its estimated density and source.';
+  }
+  scheduleViewport(state.view);
+};
 $('protected-toggle').onchange = () => {
   protectedRequest?.abort(); refreshLayers();
   if ($('protected-toggle').checked) requestProtected(); else $('protected-status').textContent = '';

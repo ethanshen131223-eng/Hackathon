@@ -13,7 +13,7 @@ from ocean_grid import classify_density
 RADIUS_KM = 75.0
 BANDWIDTH_KM = 25.0
 METHOD = 'Gaussian-weighted visual interpolation within 75 km of a source point (25 km bandwidth). Not a validated pollution model or measured coverage.'
-GRADIENT_COLORS = [[48,126,216],[76,184,211],[238,241,178],[245,150,100],[210,47,62]]
+GRADIENT_COLORS = [[25, 61, 210], [0, 189, 241], [255, 231, 44], [255, 119, 18], [205, 0, 44]]
 
 
 def density_colors(density, maximum):
@@ -113,7 +113,7 @@ class GradientSurface:
             rgb=density_colors(density,self.color_scale['maximum'])
             # Opacity fades near the model's fixed support boundary, not by changing
             # its estimated density. Unsupported and land pixels are transparent.
-            alpha=185*np.clip((RADIUS_KM-nearest)/15,0,1)
+            alpha=235*np.clip((RADIUS_KM-nearest)/15,0,1)
             alpha[~np.isfinite(density)]=0
             alpha=np.minimum(alpha.reshape(height,width),mask).astype(np.uint8)
             rgba=np.concatenate([rgb.reshape(height,width,3).astype(np.uint8),alpha[:,:,None]],axis=2)

@@ -4,7 +4,7 @@ import {classifySPI} from './spi.js';
 export function createMapLayers({tiles, protectedAreas, spiVisible, protectedVisible, onTileClick, onProtectedClick, viewStyle='tiles', gradient, onGradientClick}) {
   const bitmaps=(gradient?.frames??[]).map((frame,index)=>new BitmapLayer({
     id:`spi-gradient-${index}`,image:frame.image,bounds:frame.bounds,
-    visible:spiVisible&&viewStyle==='gradient',pickable:true,_imageCoordinateSystem:'lnglat',
+    visible:spiVisible&&viewStyle!=='tiles',pickable:true,_imageCoordinateSystem:'lnglat',
     onClick:info=>{if(info.coordinate)onGradientClick?.(info.coordinate);},
   }));
   return [...bitmaps,new GeoJsonLayer({
