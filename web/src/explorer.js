@@ -464,6 +464,8 @@ $('map-style').onchange = async () => {
   const global = $('map-style').value === 'global';
   const years = $('map-style').value === 'years';
   $('scenario-year-controls').hidden = !years;
+  $('cleanup-click-guide').textContent = years ? 'Move the year slider to see how the modeled concentration changes.'
+    : 'Click a colored tile or protected boundary to prefill a cleanup candidate.';
   $('resolution').hidden = global || years;
   $('detection-count').closest('.observation-panel').hidden = global || years;
   refreshLayers();

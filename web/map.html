@@ -29,11 +29,6 @@
         <section class="layer-panel">
           <label class="switch-row" for="heatmap-toggle"><span><strong>Ocean concentration layer</strong><small>Show water-clipped density estimates</small></span><input id="heatmap-toggle" type="checkbox" role="switch" checked /><span class="switch" aria-hidden="true"></span></label>
           <label class="range-label" for="map-style">Pollution view</label><select id="map-style"><option value="gradient">Survey concentration gradient</option><option value="years">Five-year currents scenario</option><option value="global">Global microplastics model (2014)</option><option value="tiles">SPI classification tiles</option></select>
-          <div id="scenario-year-controls" hidden>
-            <label class="range-label" for="scenario-year">Simulated time <output id="scenario-year-label" for="scenario-year">Year 0</output></label>
-            <input type="range" id="scenario-year" min="0" max="5" step="1" value="0">
-            <p class="layer-note">Move the slider to change the map. Click colored water to compare the selected year with the starting concentration.</p>
-          </div>
           <p class="layer-note" id="gradient-status" role="status">Gradient mode blends source values within 75 km. It is an unvalidated visual estimate, not measured coverage.</p>
           <p class="source-links"><a href="?scenario=years">Open the five-year map</a> · <a href="#current-timeline">Hourly chart</a></p>
           <label class="switch-row secondary-switch" for="protected-toggle"><span><strong>Protected areas</strong><small>Protected Planet marine boundaries</small></span><input id="protected-toggle" type="checkbox" role="switch" /><span class="switch" aria-hidden="true"></span></label>
@@ -49,6 +44,11 @@
       <section class="map-shell" aria-label="Marine debris observation map">
         <div id="map"></div>
         <div class="map-status" id="map-status" role="status">Preparing map…</div>
+        <div id="scenario-year-controls" hidden>
+          <label class="range-label" for="scenario-year">Simulated time <output id="scenario-year-label" for="scenario-year">Year 0</output></label>
+          <input type="range" id="scenario-year" min="0" max="5" step="1" value="0" aria-valuetext="Year 0">
+          <p class="layer-note">Click colored water to compare with Year 0.</p>
+        </div>
         <div class="map-empty" id="map-empty" hidden>No compatible density observations in this view. Transparent water means insufficient data.</div>
         <div class="tile-info" id="tile-info" hidden aria-live="polite"></div>
         <div class="legend" id="legend"><strong id="legend-title">Particle concentration</strong><span class="legend-unit" id="legend-unit">Floating pieces / km²</span><div class="legend-gradient" id="legend-gradient"></div><span class="density-scale-labels" id="density-scale-labels"></span><div id="spi-bands"></div><div class="unknown-key"><i></i><span>Transparent: insufficient support</span></div><small id="legend-note">Continuous concentration colors; exact class and source dates are in tile details.</small></div>
