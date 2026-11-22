@@ -14,7 +14,7 @@
         <span>Marine<strong>GUARDer</strong></span>
       </a>
     </header>
-    <div class="explorer-toolbar"><div id="explorer-switch"></div><p>One ocean. Two ways to explore.</p></div>
+    <div class="explorer-toolbar"><div id="explorer-switch"></div><a class="cleanup-link" href="#cleanup-planner">Smart Cleanup Planner</a></div>
     <main id="pollution-view">
       <aside>
         <div class="intro"><h1>Ocean pollution, in perspective.</h1><p>Explore observations. Understand what we know, and where we need to look.</p></div>
@@ -49,6 +49,34 @@
       </section>
     </main>
     <section id="conservation-view" hidden></section>
+    <section id="cleanup-planner" aria-labelledby="cleanup-title">
+      <h2 id="cleanup-title">Smart Cleanup Planner</h2>
+      <p>Compare shoreline cleanup candidates using recent counts of visible litter and your team’s access, conditions and cost estimates.</p>
+      <div class="cleanup-layout">
+        <form>
+          <h3>Candidate site</h3>
+          <p class="cleanup-context"></p>
+          <div class="cleanup-fields"></div>
+          <div class="cleanup-actions">
+            <button type="submit" class="primary">Save candidate</button>
+            <button type="button" class="text-button" data-new-candidate>Clear form</button>
+          </div>
+          <p role="status"></p>
+          <small>Candidates are saved in this browser.</small>
+        </form>
+        <div>
+          <h3>Cleanup shortlist</h3>
+          <ul class="cleanup-results"></ul>
+          <details>
+            <summary>How the ranking works</summary>
+            <p>Environmental priority awards up to 80 points for visible litter density, reaching the cap at 100 items per 100 m. Nearby protected habitat adds 20 points. A dated count from the last 30 days is required.</p>
+            <p>Feasibility starts at 100 and subtracts up to 50 points each for disposal travel (capped at 50 km) and the share of budget used. Access and conditions need confirmation before a site is ranked.</p>
+            <p>Priority averages both scores equally. These are screening assumptions. Check local requirements and day-of conditions before organizing a cleanup. Ocean SPI is included as context for candidates added from the map.</p>
+          </details>
+          <p><a href="https://marinedebris.noaa.gov/protocol/noaa-marine-debris-monitoring-and-assessment-project-shoreline-survey-guide">NOAA shoreline survey guide</a></p>
+        </div>
+      </div>
+    </section>
     <div class="bottom-bar">
       <nav aria-label="Main navigation"><a href="/#home">Home</a><a href="/#cases">Field cases</a><a href="/#daily">Daily puzzle</a><a href="/#play">Arcade</a><a href="/#collection">Collection</a><a href="/map.html" aria-current="page">Ocean explorer</a></nav>
     </div>

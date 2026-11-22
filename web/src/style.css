@@ -4,6 +4,26 @@
 :root { --ink:#12384d; --muted:#5b7483; --accent:#168b9b; }
 .explorer-toolbar { padding:12px 28px; display:flex; align-items:center; justify-content:space-between; gap:20px; background:linear-gradient(110deg,#eef6fd,#edf8f3); border-bottom:1px solid #d6e7ec; }
 .explorer-toolbar p { color:#5c7d8a; font-size:14px; margin:0; }
+.cleanup-link { color:#166763; font-weight:700; text-underline-offset:4px; }
+#cleanup-planner { max-width:1200px; margin:0 auto; padding:36px 24px; scroll-margin-top:16px; }
+#cleanup-planner > p { max-width:65ch; color:#526f79; }
+.cleanup-layout { display:grid; grid-template-columns:1fr 1fr; gap:24px; align-items:start; }
+.cleanup-layout > * { padding:20px; background:white; border:1px solid #dbe7e9; border-radius:12px; min-width:0; }
+.cleanup-layout h3 { margin:0 0 14px; }
+.cleanup-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.cleanup-fields label { font-size:.875rem; font-weight:600; }
+.cleanup-fields input,.cleanup-fields select { width:100%; margin-top:4px; min-height:44px; padding:8px; color:#214b58; border:1px solid #c9dadd; border-radius:6px; }
+.cleanup-fields select { padding-right:32px; }
+.cleanup-context:empty { display:none; }
+.cleanup-context { color:#516d79; }
+.cleanup-actions { display:flex; gap:16px; align-items:center; flex-wrap:wrap; margin-top:16px; }
+.cleanup-actions .primary { width:auto; margin:0; }
+.cleanup-results { margin:0; padding:0; list-style:none; }
+.cleanup-results li { border-top:1px solid #dbe7e9; padding:12px 0; }
+.cleanup-results p { margin:5px 0; overflow-wrap:anywhere; }
+.cleanup-results button + button { margin-left:14px; }
+@media (max-width:760px) { .cleanup-layout { grid-template-columns:1fr; } }
+@media (max-width:420px) { .cleanup-fields { grid-template-columns:1fr; } .explorer-toolbar { flex-wrap:wrap; } }
 #explorer-switch { display:flex; padding:4px; gap:4px; border:1px solid #cfe1e9; border-radius:12px; background:#fff; }
 #explorer-switch button { min-width:108px; min-height:40px; padding:8px 20px; border:0; border-radius:8px; background:transparent; color:#567a8d; font-size:14px; font-weight:600; }
 #explorer-switch [aria-selected=true] { background:linear-gradient(115deg,#2164ac,#168f96); color:white; }

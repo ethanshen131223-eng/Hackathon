@@ -13,6 +13,7 @@ import {mountExplorerSwitch} from './explorer-switch.js';
 import './style.css';
 import './globe.css';
 import './bottom-bar.css';
+import {mountCleanupPlanner} from './cleanup-planner.js';
 
 const $ = id => document.getElementById(id);
 const state = {areas: [], area: null, tiles: {type: 'FeatureCollection', features: []},
@@ -77,6 +78,8 @@ function refreshLayers() {
   const next = layers(); overlay?.setProps({layers: next}); preview?.setProps({layers: next});
 }
 
+const cleanupPlanner = mountCleanupPlanner($('cleanup-planner'));
+
 function showTile(feature) {
   const p = feature.properties, box = $('tile-info'); box.replaceChildren(); box.hidden = false;
   const classification = classifySPI(p.densityPiecesKm2);
@@ -98,6 +101,17 @@ function showTile(feature) {
   }
   box.append(element('p', 'Estimates describe sampled particle sizes, not every piece of marine litter.', 'species-note'));
   box.append(element('p', 'One-kilometer support cells approximate local conditions; they are not the sampled tow area.', 'species-note'));
+  if (center) {
+    const add = element('button', 'Use in cleanup planner', 'text-button');
+    add.type = 'button';
+    add.onclick = () => {
+      const location = `${center[1].toFixed(4)}°, ${center[0].toFixed(4)}°`;
+      const spi = classifySPI(p.densityPiecesKm2)?.name ?? 'Unclassified';
+      cleanupPlanner.useTile(`Shoreline near ${location}`,
+        `Ocean context near ${location} · ${spi} SPI · ${Number(p.densityPiecesKm2).toLocaleString()} floating pieces/km² · ${dates.join(', ') || 'date unavailable'}`);
+    };
+    box.append(add);
+  }
   const close = element('button', 'Close details', 'text-button'); close.onclick = () => { box.hidden = true; }; box.append(close);
 }
 
