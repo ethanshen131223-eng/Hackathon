@@ -1,3 +1,5 @@
+import {cleanupSettings, selectCleanupMethod} from './cleanup-methods.js';
+
 const STORAGE_KEY = 'marineguarder.cleanup-planner.v1';
 const DAY = 86_400_000;
 
@@ -56,6 +58,7 @@ export function estimateCleanup(site, recovery, today = Date.now()) {
 
 const fields = [
   ['name', 'Site name', 'text'],
+  ['setting', 'Cleanup setting', cleanupSettings],
   ['observedOn', 'Survey date', 'date'],
   ['items', 'Visible litter counted (items)', 'number'],
   ['length', 'Shoreline surveyed (m)', 'number', 1],
@@ -161,6 +164,26 @@ export function mountCleanupPlanner(root) {
       estimateResults.append(node('p', 'Enter a visible litter count, the distance surveyed, and a survey date from the last 30 days to estimate improvement.'));
     }
     estimateResults.append(node('h4', 'Suggested next step'), node('p', suggestion));
+    const method = selectCleanupMethod(site);
+    const process = node('section', '');
+    process.className = 'cleanup-method';
+    process.append(node('h4', method.title), node('p', method.basis),
+      node('p', `Field evidence: ${method.validation}`), node('p', `Drones: ${method.drones}`));
+    if (method.hold) process.append(node('p', 'Planning only. Resolve the reported access or conditions issue before any fieldwork.'));
+    const steps = node('ol', '');
+    steps.append(...method.steps.map(step => node('li', step)));
+    const sources = node('ul', '');
+    for (const [label, url] of method.sources) {
+      const row = node('li', '');
+      const link = node('a', label);
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      row.append(link);
+      sources.append(row);
+    }
+    process.append(node('h4', 'Cleanup process'), steps, sources);
+    root.querySelector('#cleanup-method-result').replaceChildren(process);
   }
   function updateEstimateSites() {
     const active = estimateSite.value;
@@ -262,6 +285,8 @@ export function mountCleanupPlanner(root) {
     reset();
     inputs.get('name').value = name.slice(0, 100);
     context = tileContext;
+    const inferred = selectCleanupMethod({context});
+    inputs.get('setting').value = inferred.setting === 'unknown' ? '' : inferred.setting;
     root.querySelector('.cleanup-context').textContent = context;
     status.textContent = 'Location and map evidence filled in. Add your shoreline survey and logistics before ranking.';
     estimateSite.value = '';

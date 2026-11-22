@@ -40,6 +40,7 @@ let globalPlastic;
 let currentScenario;
 let scenarioPick = 0;
 let scenarioSelection = null;
+let lastPollutionStyle = 'gradient';
 const globalSource = 'https://doi.org/10.6084/m9.figshare.1613256';
 const currentSource = 'https://erddap.aoml.noaa.gov/gdp/erddap/info/drifter_monthlymeans/index.html';
 const scenarioYear = () => Number($('scenario-year').value);
@@ -507,7 +508,14 @@ async function start() {
 $('random-area').onclick = () => selectArea(chooseArea(state.areas, state.area?.id));
 $('area-select').onchange = event => selectArea(state.areas.find(area => area.id === event.target.value));
 $('heatmap-toggle').onchange = () => { refreshLayers(); $('tile-info').hidden = true; };
-$('map-style').onchange = async () => {
+$('switch-pollution-scenario').onclick = async () => {
+  await explorerShell?.selectMode('ocean');
+  const select = $('map-style');
+  select.value = select.value === 'years' ? lastPollutionStyle : 'years';
+  $('heatmap-toggle').checked = true;
+  await select.onchange({keepView:true});
+};
+$('map-style').onchange = async ({keepView = false} = {}) => {
   scenarioPick++;
   scenarioSelection = null;
   tilesRequest?.abort();
@@ -516,6 +524,8 @@ $('map-style').onchange = async () => {
   $('map-empty').hidden = true;
   const global = $('map-style').value === 'global';
   const years = $('map-style').value === 'years';
+  if (!years) lastPollutionStyle = $('map-style').value;
+  $('switch-pollution-scenario').textContent = years ? 'Back to pollution map' : 'Five-year scenario';
   $('scenario-year-controls').hidden = !years;
   $('cleanup-click-guide').textContent = years ? 'Move the year slider to see how the modeled concentration changes.'
     : 'Click a colored tile or protected boundary to prefill a cleanup candidate.';
@@ -536,9 +546,11 @@ $('map-style').onchange = async () => {
     $('gradient-status').replaceChildren(
       document.createTextNode(`Uses repeating NOAA monthly mean currents and the 2014 baseline. Covers ${currentScenario.coverageOfBaseline}% of baseline ocean area. The same starting plastic is redistributed each year. No added pollution, removal, or year-specific forecast. `),
       sourceLink('NOAA current data', currentSource), document.createTextNode(' · '), sourceLink('2014 baseline', globalSource));
-    state.view = {longitude: 0, latitude: 0, zoom: 1};
-    if (googleMap) { googleMap.setCenter({lng: 0, lat: 0}); googleMap.setZoom(1); }
-    preview?.setProps({initialViewState: state.view});
+    if (!keepView) {
+      state.view = {longitude: 0, latitude: 0, zoom: 1};
+      if (googleMap) { googleMap.setCenter({lng: 0, lat: 0}); googleMap.setZoom(1); }
+      preview?.setProps({initialViewState: state.view});
+    }
     refreshLayers();
   } else if (global) {
     $('map-status').textContent = 'Global modeled surface microplastics · 2014';
@@ -553,9 +565,11 @@ $('map-style').onchange = async () => {
     $('gradient-status').replaceChildren(
       document.createTextNode(`2014 modeled microplastics cover ${globalPlastic.waterCoverage}% of mapped ocean area. `),
       sourceLink('Study data', globalSource));
-    state.view = {longitude: 0, latitude: 0, zoom: 1};
-    if (googleMap) { googleMap.setCenter({lng: 0, lat: 0}); googleMap.setZoom(1); }
-    preview?.setProps({initialViewState: state.view});
+    if (!keepView) {
+      state.view = {longitude: 0, latitude: 0, zoom: 1};
+      if (googleMap) { googleMap.setCenter({lng: 0, lat: 0}); googleMap.setZoom(1); }
+      preview?.setProps({initialViewState: state.view});
+    }
     refreshLayers();
   } else if ($('map-style').value === 'tiles') {
     $('gradient-status').textContent = 'Select a survey tile to see its estimated density and source.';

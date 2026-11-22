@@ -81,6 +81,10 @@ test('real-photo case flow, daily cap, navigation and earned cosmetic purchase w
     await go('#play');
     assert.equal(window.document.querySelector('a[href="#shore-cleaner"]').textContent,'Play Shore Cleaner');
     assert.equal(window.document.querySelector('a[data-nav="play"]').textContent,'Arcade');
+    for(const key of ['s','e','a']) window.dispatchEvent(new window.KeyboardEvent('keydown',{key}));
+    assert.equal(window.location.hash,'#play');
+    assert.equal(window.document.querySelector('a[href="#sea"]'),null);
+    await go('#sea');await until(()=>window.location.hash==='#play'&&window.document.querySelector('a[href="#shore-cleaner"]'));
     assert.doesNotMatch(window.document.getElementById('main-content').textContent,/Size detective|Follow the food web/);
     assert.match(window.document.getElementById('main-content').textContent,/Random field case/);
   } finally{

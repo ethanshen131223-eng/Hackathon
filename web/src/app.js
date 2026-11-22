@@ -2,7 +2,6 @@ import {CASES, classifySize, dailyCase, hitTest, scoreFindings} from './case-con
 import {loadProfile, saveProfile, completeCase, claimDaily, awardGame, buyCosmetic, equipCosmetic, SHOP, dateKey} from './progress.js';
 import {mountWorkbench, mountCreator} from './workbench.js';
 import {listLocalCases, listLocalPuzzles} from './local-cases.js';
-import {mountCleanupGame} from './games.js';
 import {EVIDENCE_CHOICES,EVIDENCE_LIMITS,checkReasoning} from './case-reasoning.js';
 import {matchOutline} from './outlines.js';
 import {mountOutlineTools} from './outline-tools.js';
@@ -331,7 +330,6 @@ function renderPlay() {
   for (const [icon, title, description, path, action] of [
     ['◈', 'Random field case', 'Draw a real FML photo and find the published litter regions. Build a collection of sourced observations.', '#case/random-beginner', 'Draw a field photo'],
     ['⌕', 'Daily spotting challenge', 'One fixed photo for the day. Find its annotated regions and keep a daily learning streak.', '#daily', 'Open today’s challenge'],
-    ['✦', 'The SEA secret', 'Take a small virtual cleanup break. Type SEA outside a text field to find it, or use the button below.', '#sea', 'Open SEA cleanup'],
   ]) {
     const card = el('article', 'game-card'); card.append(el('div', 'game-icon', icon), el('h2', '', title), el('p', '', description), link(action, path)); grid.append(card);
   }
@@ -418,7 +416,7 @@ async function renderRoute() {
   const [route = 'home', id] = location.hash.slice(1).split('/');
   main.replaceChildren();
   document.querySelectorAll('[data-nav]').forEach(a => {
-    const active = a.dataset.nav === route || (a.dataset.nav === 'cases' && ['case', 'workbench', 'creator', 'puzzle'].includes(route)) || (a.dataset.nav === 'play' && ['size-game', 'food-web', 'sea','shore-cleaner'].includes(route));
+    const active = a.dataset.nav === route || (a.dataset.nav === 'cases' && ['case', 'workbench', 'creator', 'puzzle'].includes(route)) || (a.dataset.nav === 'play' && ['size-game', 'food-web','shore-cleaner'].includes(route));
     if (active) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   });
   try {
@@ -436,8 +434,7 @@ async function renderRoute() {
     }
     else if (route === 'play') renderPlay();
     else if (route === 'shore-cleaner') mounted = mountShoreCleaner(main,{onAward,notify,navigate});
-    else if (['size-game','food-web'].includes(route)) {navigate('play');return;}
-    else if (route === 'sea') mounted = mountCleanupGame(main, {onAward, notify, navigate});
+    else if (['size-game','food-web','sea'].includes(route)) {navigate('play');return;}
     else if (route === 'collection') await renderCollection(version);
     else if (route === 'workbench') mounted = await mountWorkbench(main, {notify, onSaveCase: entry => {
       const result = completeCase(profile, {...entry, source: 'manual', reward: 0}); save(result.profile); notify('Manual findings saved to your collection.');
@@ -459,14 +456,6 @@ async function renderRoute() {
   }
 }
 
-let secret = '';
-window.addEventListener('keydown', event => {
-  if(event.composedPath().some(node=>node?.classList?.contains('shore-game-host')))return;
-  if (event.ctrlKey || event.metaKey || event.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName) || event.target.isContentEditable) return;
-  if (event.key.length !== 1) return;
-  secret = (secret + event.key.toUpperCase()).slice(-3);
-  if (secret === 'SEA') { secret = ''; navigate('sea'); notify('You found the SEA secret!'); }
-});
 window.addEventListener('hashchange', renderRoute);
 save(profile);
 renderRoute();

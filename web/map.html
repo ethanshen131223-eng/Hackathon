@@ -13,7 +13,7 @@
         <img class="site-logo" src="/marineguarder-logo.png" alt="" width="138" height="92">
       </a>
     </header>
-    <div class="explorer-toolbar"><div id="explorer-switch"></div><span id="cleanup-click-guide">Click a colored tile or protected boundary to prefill a cleanup candidate.</span><a class="cleanup-link" href="#cleanup-planner">Smart Cleanup Planner</a></div>
+    <div class="explorer-toolbar"><div id="explorer-switch"></div><span id="cleanup-click-guide">Click a colored tile or protected boundary to prefill a cleanup candidate.</span><div class="explorer-quick-actions"><button id="switch-pollution-scenario" type="button" aria-controls="pollution-view">Five-year scenario</button><a class="cleanup-link" href="#cleanup-planner">Smart Cleanup Planner</a></div></div>
     <main id="pollution-view">
       <aside>
         <div class="intro"><h1>Ocean pollution, in perspective.</h1><p>Explore observations. Understand what we know, and where we need to look.</p></div>
@@ -81,7 +81,7 @@
         <div>
           <div class="cleanup-tabs" role="tablist" aria-label="Cleanup planning">
             <button type="button" id="cleanup-shortlist-tab" role="tab" aria-selected="true" aria-controls="cleanup-shortlist">Shortlist</button>
-            <button type="button" id="cleanup-improvement-tab" role="tab" aria-selected="false" aria-controls="cleanup-improvement" tabindex="-1">Estimated improvement</button>
+            <button type="button" id="cleanup-improvement-tab" role="tab" aria-selected="false" aria-controls="cleanup-improvement" tabindex="-1">Methods &amp; improvement</button>
           </div>
           <div id="cleanup-shortlist" role="tabpanel" aria-labelledby="cleanup-shortlist-tab">
           <h3>Cleanup shortlist</h3>
@@ -101,6 +101,7 @@
             <p class="layer-note">Adjust the assumption to match your team’s capacity.</p>
             <div id="cleanup-estimate-results" aria-live="polite"></div>
             <p class="layer-note">Estimates apply only to visible litter on the surveyed stretch immediately after cleanup. Ocean SPI and microplastic concentrations remain separate.</p>
+            <div id="cleanup-method-result"></div>
             <p><a href="https://marinedebris.noaa.gov/marine-debris-handling-guidelines">NOAA debris handling guide</a></p>
           </div>
         </div>

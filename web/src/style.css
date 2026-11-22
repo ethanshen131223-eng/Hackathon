@@ -5,6 +5,11 @@
 .explorer-toolbar { padding:12px 28px; display:flex; align-items:center; justify-content:space-between; gap:20px; background:linear-gradient(110deg,#eef6fd,#edf8f3); border-bottom:1px solid #d6e7ec; }
 .explorer-toolbar p { color:#5c7d8a; font-size:14px; margin:0; }
 .cleanup-link { color:#166763; font-weight:700; text-underline-offset:4px; }
+.explorer-quick-actions { display:flex; align-items:center; gap:8px 14px; flex-wrap:wrap; }
+#switch-pollution-scenario { border:1px solid #c9dfe8; background:#fff; color:#215d76; border-radius:8px; padding:8px 12px; min-height:40px; font-weight:700; }
+.cleanup-method { margin-top:16px; padding-top:14px; border-top:1px solid #c9dfe8; }
+.cleanup-method ol,.cleanup-method ul { padding-left:22px; }
+.cleanup-method li { margin-bottom:8px; line-height:1.5; }
 .cleanup-map-hint { margin:16px 0 0; padding:12px; border-left:4px solid #147d78; background:#e5f7f3; color:#214b58; font-size:.875rem; line-height:1.5; }
 .cleanup-review { width:auto; margin:4px 0 8px; padding:9px 13px; font-size:.875rem; }
 .cleanup-selection { margin:0 0 12px; border-bottom:1px solid #dbe7e9; }
